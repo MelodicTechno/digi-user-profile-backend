@@ -8,3 +8,4 @@ from .analyse_data import analyse_data
 def analyse(request):
     analyse_data()
     return HttpResponse("Data analysis completed!")
+
