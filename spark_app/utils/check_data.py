@@ -24,11 +24,11 @@ spark = SparkSession.builder \
     .enableHiveSupport() \
     .getOrCreate()
 
-# 替换 <hive_metastore_host> 为你的 Hive Metastore 主机地址
-# 例如：thrift://192.168.100.236:9083
-
 # 读取 Hive 表
-hive_df = spark.sql("SELECT * FROM default.business")
+#hive_df = spark.sql("SELECT * FROM default.business")
 
+#美国最常见商户（前20）
+hive_most_common_shop = spark.sql("SELECT default.business.name, COUNT(*) AS shop_count FROM default.business GROUP BY name ORDER BY shop_count DESC")
+hive_most_common_shop.show(truncate=False)  # 显示统计结果
 # 显示前 5 行数据
-hive_df.show(5, truncate=False)
+#hive_df.show(5, truncate=False)
