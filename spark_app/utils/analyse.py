@@ -1,14 +1,21 @@
 # analyse.py
 from pyspark.sql import SparkSession
 
+spark = None
+
+def init_spark():
+    global spark
+    if spark is None:
+        spark = SparkSession.builder \
+            .appName("HiveExample") \
+            .config("spark.hadoop.fs.defaultFS", "hdfs://192.168.100.235:9000") \
+            .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
+            .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+            .enableHiveSupport() \
+            .getOrCreate()
+
 def clean():
-    spark = SparkSession.builder \
-        .appName("HiveExample") \
-        .config("spark.hadoop.fs.defaultFS", "hdfs://192.168.100.235:9000") \
-        .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
-        .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
-        .enableHiveSupport() \
-        .getOrCreate()
+    init_spark()
 
     # 美国最常见商户（前20）
     most_common_shop = spark.sql("""
@@ -73,8 +80,6 @@ def clean():
         GROUP BY YEAR(date)
         ORDER BY year
     """).collect()
-
-    spark.stop()
 
     return {
         "most_common_shop": most_common_shop,

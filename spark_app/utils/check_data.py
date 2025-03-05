@@ -17,7 +17,7 @@ spark = SparkSession.builder \
 # hive_most_common_shop = spark.sql("SELECT default.business.name, COUNT(*) AS shop_count FROM default.business GROUP BY name ORDER BY shop_count DESC")
 # hive_most_common_shop.show(truncate=False)  # 显示统计结果
 #读取 Hive 表
-hive_df = spark.sql("SELECT * FROM default.business")
+hive_df = spark.sql("SELECT * FROM default.users")
 hive_df.show(truncate=False)
 '''
 #数据清洗
