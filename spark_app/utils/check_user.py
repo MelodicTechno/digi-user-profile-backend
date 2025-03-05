@@ -28,7 +28,7 @@ spark = SparkSession.builder \
 # 例如：thrift://192.168.100.236:9083
 
 # 读取 Hive 表
-hive_df = spark.sql("SELECT * FROM default.business")
+hive_df = spark.sql("SELECT * FROM default.json_user")
 
 # 显示前 5 行数据
 hive_df.show(5, truncate=False)
