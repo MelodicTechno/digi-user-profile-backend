@@ -3,9 +3,9 @@ from pyspark.sql import SparkSession
 # 创建 SparkSession，并启用 Hive 支持
 spark = SparkSession.builder \
     .appName("HiveExample") \
-    .config("spark.hadoop.fs.defaultFS", "hdfs://192.168.100.235:9000") \
+    .config("spark.hadoop.fs.defaultFS", "hdfs://slave-1:9000") \
     .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
-    .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+    .config("hive.metastore.uris", "thrift://slave-1:9083") \
     .enableHiveSupport() \
     .getOrCreate()
 

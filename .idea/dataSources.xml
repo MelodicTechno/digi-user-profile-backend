@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="review_users@192.168.100.233" uuid="ec49e859-fd13-41fc-9230-55d37ac0cc2b">
-      <driver-ref>mysql_aurora_aws</driver-ref>
+    <data-source source="LOCAL" name="Django default" uuid="2648cb64-2cc1-487c-b75b-c16a83c7493c">
+      <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
-      <jdbc-driver>software.aws.rds.jdbc.mysql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql:aws://192.168.100.233:3306/review_users</jdbc-url>
+      <imported>true</imported>
+      <remarks>$PROJECT_DIR$/DigiUserProfileBackend/settings.py</remarks>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/db.sqlite3</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

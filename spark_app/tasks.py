@@ -1,8 +1,13 @@
 from pyspark.sql import SparkSession
+from .utils import analyse
+
+"""
+提供项目需要的各种服务
+"""
 
 # 初始化需求一的表
 def init_all():
-    pass
+    analyse.clean()
 
 # 返回需求一的结果们 包括商户分析 用户分析 评论分析等
 def get_statiscs():
