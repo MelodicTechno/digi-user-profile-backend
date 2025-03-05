@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import size, split, col
+from pyspark.sql.functions import size, split, col, when
 
 # 创建 SparkSession，并启用 Hive 支持
 spark = SparkSession.builder \
@@ -11,6 +11,7 @@ spark = SparkSession.builder \
 
 #读取 Hive 表
 hive_df = spark.sql("SELECT * FROM default.business")
+hive_df.show(truncate=False)
 '''
 #数据清洗
 #新增category_count列
@@ -48,6 +49,45 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #spark.sql("Select         where ")
 #统计不同类型（中国菜、美式、墨西哥）的餐厅类型及数量
 
-#统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
+# 新增列：是否是 Chinese、American、Mexican
+updated_df = hive_df.withColumn(
+    "isChinese",
+    when(col("categories").contains("Chinese"), 1).otherwise(0)
+).withColumn(
+    "isAmerican",
+    when(col("categories").contains("American"), 1).otherwise(0)
+).withColumn(
+    "isMexican",
+    when(col("categories").contains("Mexican"), 1).otherwise(0)
+)
 
+
+# 将 updated_df 注册为临时视图
+updated_df.createOrReplaceTempView("updated_df")
+#updated_df.write.mode("overwrite").saveAsTable("default.business_with_types")
+'''
+result_df_C = spark.sql("SELECT isChinese ,count(*) FROM updated_df group by isChinese")
+result_df_A = spark.sql("SELECT isAmerican,count(*) FROM updated_df group by isAmerican")
+result_df_M = spark.sql("SELECT isMexican,count(*) FROM updated_df group by isMexican")
+result_df_C.show(truncate=False)
+result_df_A.show(truncate=False)
+result_df_M.show(truncate=False)
+'''
+
+
+
+
+#统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
+Chinese_review_count = spark.sql("select name , review_count from updated_df where isChinese = 1")
+American_review_count = spark.sql("select name , review_count from updated_df where isAmerican = 1")
+Mexico_review_count = spark.sql("select name , review_count from updated_df where isMexican = 1")
+Chinese_review_count.show()
+American_review_count.show()
+Mexico_review_count.show()
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评分分布
+Chinese_review_stars = spark.sql("select name , stars from updated_df where isChinese = 1")
+American_review_stars = spark.sql("select name , stars from updated_df where isAmerican = 1")
+Mexico_review_stars = spark.sql("select name , stars from updated_df where isMexican = 1")
+Chinese_review_stars.show()
+American_review_stars.show()
+Mexico_review_stars.show()
