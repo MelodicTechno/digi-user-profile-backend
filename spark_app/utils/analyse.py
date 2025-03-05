@@ -74,6 +74,27 @@ def clean():
         ORDER BY year
     """).collect()
 
+    # 分析每年加入的用户数量
+    user_every_year = spark.sql("""
+    SELECT 
+        YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+        COUNT(*) AS user_count 
+    FROM 
+        default.users 
+    GROUP BY 
+        YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+    """)
+    # 统计评论达人（review_count）
+    review_count = spark.sql("SELECT user_id, name, review_count FROM default.users order by user_review_count DESC")
+
+    # 统计人气最高的用户（fans）
+    fans_most = spark.sql("select user_id, name, fans from default.users order by fans DESC")
+
+    # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
+    user_every_year = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+    review_count_year = spark.sql("select count(*) from default.review group by YEAR(STR_TO_DATE(data, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+
+
     spark.stop()
 
     return {

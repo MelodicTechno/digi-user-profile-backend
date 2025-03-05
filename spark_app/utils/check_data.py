@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import size, split, col
+from pyspark.sql.functions import size, split, col, year, to_date
 
 # 创建 SparkSession，并启用 Hive 支持
 spark = SparkSession.builder \
@@ -17,8 +17,8 @@ spark = SparkSession.builder \
 # hive_most_common_shop = spark.sql("SELECT default.business.name, COUNT(*) AS shop_count FROM default.business GROUP BY name ORDER BY shop_count DESC")
 # hive_most_common_shop.show(truncate=False)  # 显示统计结果
 #读取 Hive 表
-hive_df = spark.sql("SELECT * FROM default.business")
-hive_df.show(truncate=False)
+# hive_df = spark.sql("SELECT * FROM default.business")
+# hive_df.show(truncate=False)
 '''
 #数据清洗
 #新增category_count列
@@ -39,7 +39,7 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #hive_shop_most_city.show(truncate=False)  # 显示统计结果
 
 #美国商户最多的前五个州
-<<<<<<< HEAD
+
 # hive_shop_most_state = spark.sql("SELECT default.business.state, COUNT(*) AS shop_count FROM default.business GROUP BY state ORDER BY shop_count DESC")
 # hive_shop_most_state.show(truncate=False)  # 显示统计结果
 #
@@ -65,22 +65,50 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #
 # #统计不同类型（中国菜、美式、墨西哥）的餐厅的评分分布
 #
-#  # 分析每年加入的用户数量
-# hive_df = spark.sql("SELECT count(*) as user_count FROM default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d'))")
-# hive_stars_high_city.show(truncate=False)  # 显示统计结果
+ # 分析每年加入的用户数量
+# hive_df = spark.sql("""
+#     SELECT
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+#         COUNT(*) AS user_count
+#     FROM
+#         default.users
+#     GROUP BY
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+# """)
+# hive_df.show(truncate=False)  # 显示统计结果
 # # 统计评论达人（review_count）
-# hive_df = spark.sql("SELECT * FROM default.users order by user_review_count DESC LIMIT 10")
-# hive_stars_high_city.show(truncate=False)  # 显示统计结果
+# hive_df = spark.sql("SELECT user_id, name, review_count FROM default.users order by review_count DESC")
+# hive_df.show(truncate=False)  # 显示统计结果
 # # 统计人气最高的用户（fans）
-# hive_df = spark.sql("select * from default.users order by user_fan DESC LIMIT 1")
+# hive_df = spark.sql("select user_id, name, fans from default.users order by fans DESC")
+# hive_df.show(truncate=False)  # 显示统计结果
 # # 统计每年优质用户、普通用户比例
 # hive_df = spark.sql("")
 # # 显示每年总用户数、沉默用户数(未写评论)的比例
-# hive_df = spark.sql("select count(*) from default.users  ")
+hive_df_temp = spark.sql("select * from default.users")
+users = hive_df_temp.withColumn("year", year(to_date(col("yelping_since"), "yyyy-MM-dd")))
+users.write.mode("overwrite").saveAsTable("default.temp_users")
+
+# hive_df = spark.sql("""
+#     SELECT
+#         year,
+#         COUNT(DISTINCT u2.user_id) AS total_users
+#     FROM
+#         default.temp_users u1
+#     JOIN
+#         default.temp_users u2 ON u2.year <= u1.year)
+#     GROUP BY
+#         year
+#     ORDER BY
+#         year
+# """)
+# hive_df.show(truncate=False)  # 显示统计结果
+
+
 # # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
 # hive_df = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
 # hive_df = spark.sql("select count(*) from default.review group by YEAR(STR_TO_DATE(data, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
-=======
+
 #hive_shop_most_state = spark.sql("SELECT default.business.state, COUNT(*) AS shop_count FROM default.business GROUP BY state ORDER BY shop_count DESC")
 #hive_shop_most_state.show(truncate=False)  # 显示统计结果
 
@@ -107,4 +135,3 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
 
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评分分布
->>>>>>> main
