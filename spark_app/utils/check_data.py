@@ -10,7 +10,8 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 #读取 Hive 表
-hive_df = spark.sql("SELECT * FROM default.business")
+hive_df = spark.sql("SELECT * FROM default.users")
+hive_df.show(5, truncate=False)
 '''
 #数据清洗
 #新增category_count列
@@ -49,9 +50,6 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #统计不同类型（中国菜、美式、墨西哥）的餐厅类型及数量
 # 替换 <hive_metastore_host> 为你的 Hive Metastore 主机地址
 # 例如：thrift://192.168.100.236:9083
-spark.sql("use default")
-# 读取 Hive 表
-hive_df = spark.sql("SELECT * FROM review")
 
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
 
