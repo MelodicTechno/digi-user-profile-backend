@@ -1,9 +1,15 @@
 # 序列化器
 from rest_framework import serializers
+from .models import Business, Review
 
-class YelpReviewSerializer(serializers.Serializer):
-    review_id = serializers.CharField()
-    user_id = serializers.CharField()
-    business_id = serializers.CharField()
-    stars = serializers.FloatField()
-    text = serializers.CharField()
+# Business序列化器
+class BusinessSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = ['id', 'name', 'address', 'city', 'state', 'postal_code', 'stars', 'review_count']
+
+# Review序列化器
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'business_id', 'user_id', 'stars', 'date', 'text']

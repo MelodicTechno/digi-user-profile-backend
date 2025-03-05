@@ -19,6 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('api.urls')),
-    path('spark/', include('spark_app.urls')),
+    # path('', include('api.urls')),
+    path('api/', include('spark_app.urls')),
 ]
