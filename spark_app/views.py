@@ -3,9 +3,9 @@ from django.shortcuts import render
 # Create your views here.
 # spark_app/views.py
 from django.http import HttpResponse
-from .analyse_data import analyse_data
+from .tasks import init_all
 
-def analyse(request):
-    analyse_data()
+def init_all(request):
+    init_all()
     return HttpResponse("Data analysis completed!")
 

@@ -3,11 +3,11 @@ from rest_framework.decorators import api_view
 from base.models import Item
 from .serializers import ItemSerializer
 
-@api_view(['GET'])
-def get_data(request):
-    items = Item.objects.all()
-    serializer = ItemSerializer(items, many=True)
-    return Response(serializer.data)
+# @api_view(['GET'])
+# def get_data(request):
+#     items = Item.objects.all()
+#     serializer = ItemSerializer(items, many=True)
+#     return Response(serializer.data)
 
 @api_view(['POST'])
 def add_item(request):

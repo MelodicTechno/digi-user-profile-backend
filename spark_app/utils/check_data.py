@@ -48,6 +48,11 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 #收获五星评论最多的商户（前20）（连表查询）
 #spark.sql("Select         where ")
 #统计不同类型（中国菜、美式、墨西哥）的餐厅类型及数量
+# 替换 <hive_metastore_host> 为你的 Hive Metastore 主机地址
+# 例如：thrift://192.168.100.236:9083
+spark.sql("use default")
+# 读取 Hive 表
+hive_df = spark.sql("SELECT * FROM review")
 
 # 新增列：是否是 Chinese、American、Mexican
 updated_df = hive_df.withColumn(
