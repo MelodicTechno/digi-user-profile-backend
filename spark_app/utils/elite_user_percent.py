@@ -2,10 +2,18 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, regexp_replace, split, expr, explode, lit, year, to_date, sequence, array_contains, sum, count, when
 from pyspark.sql.functions import col, regexp_replace, split, expr, explode, lit, year, to_date, sequence, array_contains, sum, count, when, round  # 增加round导入
 
-spark = SparkSession.builder.appName("EliteUserRatioEnhanced").getOrCreate()
 
-# 读取用户数据
-user_df = spark.read.json("/Users/a123/Documents/上程/yelp/yelp_academic_dataset_user.json")
+spark = SparkSession.builder \
+    .appName("HiveExample") \
+    .config("spark.sql.warehouse.dir", "user/hive/warehouse") \
+    .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+
+# 读取 Hive 表
+user_df = spark.sql("SELECT * FROM default.users")
+
 
 # 数据清洗与预处理
 processed_df = (
