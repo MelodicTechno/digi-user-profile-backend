@@ -136,3 +136,4 @@ Thumbs.db
 # 忽略测试报告文件
 coverage.xml
 nosetests.xml
+spark_app/__pycache__/
