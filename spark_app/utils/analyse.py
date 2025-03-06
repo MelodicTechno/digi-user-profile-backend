@@ -1,5 +1,7 @@
 # analyse.py
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, Window
+from pyspark.sql.functions import size, split, col, year, to_date, sum, when, lit
+
 
 def clean():
     spark = SparkSession.builder \
@@ -84,11 +86,56 @@ def clean():
     GROUP BY 
         YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
     """)
+
     # 统计评论达人（review_count）
     review_count = spark.sql("SELECT user_id, name, review_count FROM default.users order by user_review_count DESC")
 
     # 统计人气最高的用户（fans）
     fans_most = spark.sql("select user_id, name, fans from default.users order by fans DESC")
+
+    # 显示每年总用户数、沉默用户数(未写评论)的比例
+    annual_users = spark.sql("""
+        SELECT
+            YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+            COUNT(DISTINCT user_id) AS new_users
+        FROM
+            default.users
+        GROUP BY
+            YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+        ORDER BY
+            year
+    """).withColumnRenamed("year", "user_year")
+
+    window_spec = Window.orderBy("user_year").rowsBetween(Window.unboundedPreceding, Window.currentRow)
+    annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
+
+    # Step 2: 统计每年有评论的用户数
+    review_users = spark.sql("""
+        SELECT
+            YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
+            COUNT(DISTINCT user_id) AS reviewed_users
+        FROM
+            review
+        GROUP BY
+            YEAR(to_date(date, 'yyyy-MM-dd'))
+        ORDER BY
+            review_year
+    """)
+
+    # Step 3: 合并数据并计算沉默用户数和比例
+    result = annual_users.join(review_users, annual_users.user_year == review_users.review_year, "left") \
+        .withColumn("reviewed_users", when(col("reviewed_users").isNull(), lit(0)).otherwise(col("reviewed_users"))) \
+        .withColumn("silent_users", col("total_users") - col("reviewed_users")) \
+        .withColumn("silent_ratio", col("silent_users") / col("total_users"))
+
+    # Step 4: 选择需要的列并重命名
+    total_and_silent = result.select(
+        col("user_year").alias("year"),
+        col("total_users"),
+        col("reviewed_users"),
+        col("silent_users"),
+        col("silent_ratio")
+    ).orderBy("year")
 
     # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
     user_every_year = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")

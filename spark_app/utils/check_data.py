@@ -1,5 +1,5 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import size, split, col, year, to_date
+from pyspark.sql import SparkSession, Window
+from pyspark.sql.functions import size, split, col, year, to_date, sum, when, lit
 
 # 创建 SparkSession，并启用 Hive 支持
 spark = SparkSession.builder \
@@ -85,28 +85,71 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 # # 统计每年优质用户、普通用户比例
 # hive_df = spark.sql("")
 # # 显示每年总用户数、沉默用户数(未写评论)的比例
-hive_df_temp = spark.sql("select * from default.users")
-users = hive_df_temp.withColumn("year", year(to_date(col("yelping_since"), "yyyy-MM-dd")))
-users.write.mode("overwrite").saveAsTable("default.temp_users")
+# hive_df_temp = spark.sql("select * from default.users")
+# users = hive_df_temp.withColumn("year", year(to_date(col("yelping_since"), "yyyy-MM-dd")))
+# users.write.mode("overwrite").saveAsTable("default.temp_users")
 
-# hive_df = spark.sql("""
-#     SELECT
-#         year,
-#         COUNT(DISTINCT u2.user_id) AS total_users
-#     FROM
-#         default.temp_users u1
-#     JOIN
-#         default.temp_users u2 ON u2.year <= u1.year)
-#     GROUP BY
-#         year
-#     ORDER BY
-#         year
-# """)
-# hive_df.show(truncate=False)  # 显示统计结果
+annual_users = spark.sql("""
+    SELECT
+        YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+        COUNT(DISTINCT user_id) AS new_users
+    FROM
+        default.users
+    GROUP BY
+        YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+    ORDER BY
+        year
+""").withColumnRenamed("year", "user_year")
+
+window_spec = Window.orderBy("user_year").rowsBetween(Window.unboundedPreceding, Window.currentRow)
+annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
+
+# Step 2: 统计每年有评论的用户数
+review_users = spark.sql("""
+    SELECT
+        YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
+        COUNT(DISTINCT user_id) AS reviewed_users
+    FROM
+        review
+    GROUP BY
+        YEAR(to_date(date, 'yyyy-MM-dd'))
+    ORDER BY
+        review_year
+""")
+
+# Step 3: 合并数据并计算沉默用户数和比例
+result = annual_users.join(review_users, annual_users.user_year == review_users.review_year, "left") \
+                     .withColumn("reviewed_users", when(col("reviewed_users").isNull(), lit(0)).otherwise(col("reviewed_users"))) \
+                     .withColumn("silent_users", col("total_users") - col("reviewed_users")) \
+                     .withColumn("silent_ratio", col("silent_users") / col("total_users"))
+
+# Step 4: 选择需要的列并重命名
+result = result.select(
+    col("user_year").alias("year"),
+    col("total_users"),
+    col("reviewed_users"),
+    col("silent_users"),
+    col("silent_ratio")
+).orderBy("year")
+
+# 显示结果
+result.show(truncate=False)
+
 
 
 # # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
-# hive_df = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+# hive_df = spark.sql("""
+#     SELECT
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+#         COUNT(DISTINCT user_id) AS total_users
+#     FROM
+#         default.users
+#     GROUP BY
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+#     ORDER BY
+#         year
+# """)
+
 # hive_df = spark.sql("select count(*) from default.review group by YEAR(STR_TO_DATE(data, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
 
 #hive_shop_most_state = spark.sql("SELECT default.business.state, COUNT(*) AS shop_count FROM default.business GROUP BY state ORDER BY shop_count DESC")
