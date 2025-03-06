@@ -60,7 +60,7 @@ def clean():
     """).collect()
 
     # 收获五星评论最多的商户（前20）
-    five_stars_most = spark.sql("Select business.business_id , count(*) as five_stars_counts from business,review where business.business_id = review.business_id and review.stars = 5.0 group by business.business_id")
+    five_stars_most = spark.sql("Select business.business_id , business.name ,count(*) as five_stars_counts from default.business,default.review where business.business_id = review.business_id and review.stars = 5.0 group by business.business_id , business.name")
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
@@ -72,13 +72,13 @@ def clean():
 
 
     # 商家打卡数排序
-    checkin_df = spark.sql("SELECT * FROM checkin")
-    business_df = spark.sql("SELECT business_id, city FROM business")
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    business_df = spark.sql("SELECT business_id, city FROM default.business")
     exploded_checkin = checkin_df.withColumn(
         "checkin_time",
         explode(split(col("date"), ",\s*"))
     ).select("business_id", "checkin_time")
-    business_df = spark.sql("SELECT business_id, name, city FROM business")
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
     joined_business = exploded_checkin.join(
         business_df,
         "business_id",
@@ -182,7 +182,7 @@ def clean():
             YEAR(date) AS year,
             COUNT(*) AS tip_count
         FROM 
-            tip
+            default.tip
         WHERE 
             date IS NOT NULL  -- 过滤空值
         GROUP BY 
@@ -197,7 +197,7 @@ def clean():
     SELECT
         CAST(stars AS INT) AS rating,
         COUNT(*) AS review_count
-    FROM review
+    FROM default.review
     WHERE stars IS NOT NULL
     GROUP BY CAST(stars AS INT)
     ORDER BY rating
@@ -235,7 +235,7 @@ def clean():
     SELECT 
         business_id, 
         COUNT(*) AS five_star_count
-    FROM review
+    FROM default.review
     WHERE CAST(stars AS INT) = 5 AND stars IS NOT NULL
     GROUP BY business_id
     ORDER BY five_star_count DESC
@@ -283,7 +283,7 @@ def clean():
             YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
             COUNT(DISTINCT user_id) AS reviewed_users
         FROM
-            review
+            default.review
         GROUP BY
             YEAR(to_date(date, 'yyyy-MM-dd'))
         ORDER BY
