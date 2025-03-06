@@ -5,13 +5,14 @@ from pyspark.sql.functions import col, regexp_replace, split, expr, explode, lit
 
 
 def clean():
+
     spark = SparkSession.builder \
         .appName("HiveExample") \
-        .config("spark.hadoop.fs.defaultFS", "hdfs://192.168.100.235:9000") \
-        .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
+        .config("spark.sql.warehouse.dir", "user/hive/warehouse") \
         .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
         .enableHiveSupport() \
         .getOrCreate()
+
 
     # 美国最常见商户（前20）
     most_common_shop = spark.sql("""
@@ -63,6 +64,7 @@ def clean():
                                 "from default.business,default.review "
                                 "where default.business_id = default.review.business_id and review.stars = 5.0 "
                                 "group by default.business.business_id")
+
     # 统计每年的评论数
     review_in_year = spark.sql("""
         SELECT YEAR(date) AS year, COUNT(*) AS review_count
@@ -73,13 +75,13 @@ def clean():
 
 
     # 商家打卡数排序
-    checkin_df = spark.sql("SELECT * FROM checkin")
-    business_df = spark.sql("SELECT business_id, city FROM business")
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    business_df = spark.sql("SELECT business_id, city FROM default.business")
     exploded_checkin = checkin_df.withColumn(
         "checkin_time",
         explode(split(col("date"), ",\s*"))
     ).select("business_id", "checkin_time")
-    business_df = spark.sql("SELECT business_id, name, city FROM business")
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
     joined_business = exploded_checkin.join(
         business_df,
         "business_id",
@@ -92,6 +94,7 @@ def clean():
         .select("name", "city", "total_checkins")
 
 
+
     # 最喜欢打卡的城市
     joined_df = exploded_checkin.join(
         business_df,
@@ -102,6 +105,7 @@ def clean():
         .count() \
         .withColumnRenamed("count", "total_checkins") \
         .orderBy(col("total_checkins").desc())
+
 
 
     # 每小时打卡数统计
@@ -118,12 +122,15 @@ def clean():
     hourly_counts = processed_df.groupBy("hour").count().orderBy("hour")
 
 
+
     # 每年打卡数统计
     processed_df = exploded_df.withColumn(
         "datetime",
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
     yearly_counts = processed_df.groupBy("year").count().orderBy("year")
+
+
 
 
     # 精英用户比
@@ -171,6 +178,75 @@ def clean():
         .select("year", "ratio")
     )
 
+
+    # 每年 tip 数
+    tips_per_year = spark.sql("""
+        SELECT 
+            YEAR(date) AS year,
+            COUNT(*) AS tip_count
+        FROM 
+            default.tip
+        WHERE 
+            date IS NOT NULL  -- 过滤空值
+        GROUP BY 
+            YEAR(date)
+        ORDER BY 
+            year
+""").collect()
+
+
+    # 评分分布（1-5）
+    stars_dist = spark.sql("""
+    SELECT
+        CAST(stars AS INT) AS rating,
+        COUNT(*) AS review_count
+    FROM default.review
+    WHERE stars IS NOT NULL
+    GROUP BY CAST(stars AS INT)
+    ORDER BY rating
+    """)
+
+
+
+    # 每周各天的评分次数
+    review_in_week = spark.sql("""
+    WITH weekday_data AS (
+        SELECT 
+            date_format(to_date(date), 'EEEE') AS weekday_name,
+            CASE 
+                WHEN extract(dayofweek FROM to_date(date)) = 1 THEN 7  -- Sunday
+                ELSE extract(dayofweek FROM to_date(date)) - 1 
+            END AS weekday_num,
+            review_id
+        FROM review
+        WHERE date IS NOT NULL
+    )
+    SELECT 
+        weekday_name,
+        COUNT(review_id) AS review_count
+    FROM weekday_data
+    WHERE weekday_num IS NOT NULL
+    GROUP BY weekday_name, weekday_num
+    ORDER BY weekday_num
+    """)
+
+
+
+
+    # 5星评价最多的前5个商家
+    top5_businesses = spark.sql("""
+    SELECT 
+        business_id, 
+        COUNT(*) AS five_star_count
+    FROM default.review
+    WHERE CAST(stars AS INT) = 5 AND stars IS NOT NULL
+    GROUP BY business_id
+    ORDER BY five_star_count DESC
+    LIMIT 5
+    """)
+
+
+
     # 分析每年加入的用户数量
     user_every_year = spark.sql("""
     SELECT 
@@ -210,7 +286,7 @@ def clean():
             YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
             COUNT(DISTINCT user_id) AS reviewed_users
         FROM
-            review
+            default.review
         GROUP BY
             YEAR(to_date(date, 'yyyy-MM-dd'))
         ORDER BY
@@ -251,5 +327,9 @@ def clean():
         "city_checkin_ranking": city_ranking,
         "checkin_per_hour": hourly_counts,
         "checkin_per_year": yearly_counts,
-        "elite_user_percent": elite_user_percent
+        "elite_user_percent": elite_user_percent,
+        "tips_per_year": tips_per_year,
+        "stars_in_1-5": stars_dist,
+        "review_in_week": review_in_week,
+        "top5_businesses": top5_businesses
     }
