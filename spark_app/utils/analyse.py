@@ -13,6 +13,7 @@ def clean():
         .enableHiveSupport() \
         .getOrCreate()
 
+
     # 美国最常见商户（前20）
     most_common_shop = spark.sql("""
         SELECT name, COUNT(*) AS shop_count
