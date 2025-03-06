@@ -59,15 +59,7 @@ def clean():
     """).collect()
 
     # 收获五星评论最多的商户（前20）
-    most_stars = spark.sql("""
-        SELECT b.name, COUNT(r.stars) AS star_count
-        FROM default.business b
-        JOIN default.review r ON b.id = r.business_id
-        WHERE r.stars = 5
-        GROUP BY b.name
-        ORDER BY star_count DESC
-        LIMIT 20
-    """).collect()
+    five_stars_most = spark.sql("Select business.business_id , count(*) as five_stars_counts from business,review where business.business_id = review.business_id and review.stars = 5.0 group by business.business_id")
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
@@ -98,7 +90,6 @@ def clean():
         .select("name", "city", "total_checkins")
 
 
-
     # 最喜欢打卡的城市
     joined_df = exploded_checkin.join(
         business_df,
@@ -109,7 +100,6 @@ def clean():
         .count() \
         .withColumnRenamed("count", "total_checkins") \
         .orderBy(col("total_checkins").desc())
-
 
 
     # 每小时打卡数统计
@@ -126,15 +116,12 @@ def clean():
     hourly_counts = processed_df.groupBy("hour").count().orderBy("hour")
 
 
-
     # 每年打卡数统计
     processed_df = exploded_df.withColumn(
         "datetime",
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
     yearly_counts = processed_df.groupBy("year").count().orderBy("year")
-
-
 
 
     # 精英用户比
@@ -190,7 +177,7 @@ def clean():
         "shop_most_state": shop_most_state,
         "common_with_rate": common_with_rate,
         "stars_high_city": stars_high_city,
-        "most_stars": most_stars,
+        "most_stars": five_stars_most,
         "review_in_year": review_in_year,
         "business_checkin_ranking": business_ranking,
         "city_checkin_ranking": city_ranking,
