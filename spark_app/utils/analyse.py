@@ -152,7 +152,7 @@ def clean():
             explode("active_years").alias("year"),
             "elite_years"
         )
-        .withColumn("is_elite", array_contains(col("elite_years"), col("year")))
+        .withColumn("is_elite", expr("array_contains(elite_years, year)"))
     )
     elite_user_percent = (
         yearly_status
