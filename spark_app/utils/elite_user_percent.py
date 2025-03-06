@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, regexp_replace, split, expr, explode, lit, year, to_date, sequence, array_contains, sum, count, when, round, coalesce
 
+
 spark = SparkSession.builder \
     .appName("HiveExample") \
     .config("spark.sql.warehouse.dir", "user/hive/warehouse") \
@@ -10,7 +11,6 @@ spark = SparkSession.builder \
 
 # 读取 Hive 表
 user_df = spark.sql("SELECT * FROM default.users")
-print("数据读取已完成")
 
 # 数据清洗与预处理
 processed_df = (
