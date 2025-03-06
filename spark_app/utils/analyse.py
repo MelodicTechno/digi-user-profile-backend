@@ -215,7 +215,7 @@ def clean():
                 ELSE extract(dayofweek FROM to_date(date)) - 1 
             END AS weekday_num,
             review_id
-        FROM review
+        FROM default.review
         WHERE date IS NOT NULL
     )
     SELECT 
