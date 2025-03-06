@@ -90,7 +90,7 @@ local_settings.py
 <<<<<<< HEAD
 db
 
-.idea
+.idea/
 .idea/DigiUserProfileBackend.iml
 .idea/misc.xml
 DigiUserProfileBackend/__pycache__/__init__.cpython-37.pyc

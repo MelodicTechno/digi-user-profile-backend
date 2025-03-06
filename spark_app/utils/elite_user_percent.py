@@ -9,7 +9,6 @@ spark = SparkSession.builder \
     .enableHiveSupport() \
     .getOrCreate()
 
-
 # 读取 Hive 表
 user_df = spark.sql("SELECT * FROM default.users")
 
