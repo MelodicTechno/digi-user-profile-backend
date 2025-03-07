@@ -51,7 +51,7 @@ class MostStars(models.Model):
     five_stars_counts = models.IntegerField()
 
     def __str__(self):
-        return self.business_id
+        return self.business_name
 
 # 每年评论数
 class ReviewInYear(models.Model):
