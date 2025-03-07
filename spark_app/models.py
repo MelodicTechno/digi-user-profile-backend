@@ -55,8 +55,8 @@ class MostStars(models.Model):
 
 # 每年评论数
 class ReviewInYear(models.Model):
-    year = models.IntegerField()
-    review_count = models.IntegerField()
+    year = models.IntegerField(null=True)
+    review_count = models.IntegerField(null=True)
 
     def __str__(self):
         return str(self.year)
