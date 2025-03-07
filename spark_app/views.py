@@ -168,7 +168,7 @@ def get_statistics(request):
         "stars_high_city": list(StarsHighCity.objects.all().values('city', 'average_stars')),
         "most_stars": list(MostStars.objects.all().values('business_id', 'business_name', 'five_stars_counts')),
         "review_in_year": list(ReviewInYear.objects.all().values('year', 'review_count')),
-        "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins')),
+        "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins'))[:10],
         "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins')),
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
