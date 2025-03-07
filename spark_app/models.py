@@ -84,4 +84,3 @@ class EliteUserPercent(models.Model):
 
     def __str__(self):
         return str(self.year)
-

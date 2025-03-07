@@ -14,7 +14,7 @@ from .models import (
     CityCheckinRanking,
     CheckinPerHour,
     CheckinPerYear,
-    EliteUserPercent
+    EliteUserPercent,
 )
 # 初始化和统计
 @require_http_methods(['GET'])
@@ -24,7 +24,6 @@ def for_test(request):
 @require_http_methods(['GET'])
 def update_statistics(request):
     statistics = analyse.clean()
-
     # 清空现有数据
     MostCommonShop.objects.all().delete()
     ShopMostCity.objects.all().delete()
@@ -38,6 +37,7 @@ def update_statistics(request):
     CheckinPerHour.objects.all().delete()
     CheckinPerYear.objects.all().delete()
     EliteUserPercent.objects.all().delete()
+
 
     # 保存数据
     for shop in statistics['most_common_shop']:
@@ -115,6 +115,7 @@ def get_statistics(request):
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
         "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
+
 
     return JsonResponse(statistics)
 

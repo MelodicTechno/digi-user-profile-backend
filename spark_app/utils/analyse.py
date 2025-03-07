@@ -227,9 +227,6 @@ def clean():
     ORDER BY weekday_num
     """)
 
-
-
-
     # 5星评价最多的前5个商家
     top5_businesses = spark.sql("""
     SELECT 
@@ -241,8 +238,6 @@ def clean():
     ORDER BY five_star_count DESC
     LIMIT 5
     """)
-
-
 
     # 分析每年加入的用户数量
     user_every_year = spark.sql("""
@@ -306,7 +301,7 @@ def clean():
     ).orderBy("year")
 
     # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
-    user_every_year = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+    user_every_year2 = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
     review_count_year = spark.sql("select count(*) from default.review group by YEAR(STR_TO_DATE(data, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
 
 
@@ -328,5 +323,5 @@ def clean():
         "tips_per_year": tips_per_year,
         "stars_in_1-5": stars_dist,
         "review_in_week": review_in_week,
-        "top5_businesses": top5_businesses
+        "top5_businesses": top5_businesses,
     }
