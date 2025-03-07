@@ -78,25 +78,29 @@ def clean():
         ORDER BY year
     """).collect()
 
-
     # 商家打卡数排序
     checkin_df = spark.sql("SELECT * FROM default.checkin")
-    business_df = spark.sql("SELECT business_id, city FROM default.business")
     exploded_checkin = checkin_df.withColumn(
         "checkin_time",
         explode(split(col("date"), ",\s*"))
     ).select("business_id", "checkin_time")
+
     business_df = spark.sql("SELECT business_id, name, city FROM default.business")
     joined_business = exploded_checkin.join(
         business_df,
         "business_id",
         "inner"
     )
-    business_ranking = joined_business.groupBy("business_id", "name", "city") \
+
+    business_ranking_df = joined_business.groupBy("business_id", "name", "city") \
         .count() \
         .withColumnRenamed("count", "total_checkins") \
         .orderBy(col("total_checkins").desc()) \
         .select("name", "city", "total_checkins")
+
+    # 将结果收集到 Python 列表中，并将每一行转换为字典
+    business_ranking = business_ranking_df.collect()
+    business_ranking = [row.asDict() for row in business_ranking]  # 将 Row 对象转换为字典
 
 
 
@@ -109,7 +113,9 @@ def clean():
     city_ranking = joined_df.groupBy("city") \
         .count() \
         .withColumnRenamed("count", "total_checkins") \
-        .orderBy(col("total_checkins").desc())
+        .orderBy(col("total_checkins").desc()).collect()
+    # 修改
+    city_ranking = [row.asDict() for row in city_ranking]
 
 
 
