@@ -60,10 +60,10 @@ def clean():
     """).collect()
 
     # 收获五星评论最多的商户（前20）
-    five_stars_most = spark.sql("Select business.business_id , count(*) as five_stars_counts "
+    five_stars_most = spark.sql("Select business.business_id , business.name ,count(*) as five_stars_counts "
                                 "from default.business,default.review "
-                                "where default.business_id = default.review.business_id and review.stars = 5.0 "
-                                "group by default.business.business_id")
+                                "where business.business_id = review.business_id and review.stars = 5.0 "
+                                "group by business.business_id , business.name")
 
     # 统计每年的评论数
     review_in_year = spark.sql("""

@@ -37,6 +37,7 @@ class StarsHighCity(models.Model):
 
 class MostStars(models.Model):
     business_id = models.CharField(max_length=255)
+    business_name = models.CharField(max_length=255)
     five_stars_counts = models.IntegerField()
 
     def __str__(self):

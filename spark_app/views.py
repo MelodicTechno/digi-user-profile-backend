@@ -56,7 +56,7 @@ def update_statistics(request):
         StarsHighCity.objects.create(city=city[0], average_stars=city[1])
 
     for stars in statistics['most_stars']:
-        MostStars.objects.create(business_id=stars[0], five_stars_counts=stars[1])
+        MostStars.objects.create(business_id=stars[0], business_name=stars[1], five_stars_counts=stars[2])
 
     for review in statistics['review_in_year']:
         ReviewInYear.objects.create(year=review[0], review_count=review[1])
@@ -102,12 +102,13 @@ def init_all(request):
 @require_http_methods(['GET'])
 def get_statistics(request):
     statistics = {
+        #
         "most_common_shop": list(MostCommonShop.objects.all().values('name', 'shop_count')),
         "shop_most_city": list(ShopMostCity.objects.all().values('city', 'shop_count')),
         "shop_most_state": list(ShopMostState.objects.all().values('state', 'shop_count')),
         "common_with_rate": list(CommonWithRate.objects.all().values('name', 'avg_stars')),
         "stars_high_city": list(StarsHighCity.objects.all().values('city', 'average_stars')),
-        "most_stars": list(MostStars.objects.all().values('business_id', 'five_stars_counts')),
+        "most_stars": list(MostStars.objects.all().values('business_id', 'business_name', 'five_stars_counts')),
         "review_in_year": list(ReviewInYear.objects.all().values('year', 'review_count')),
         "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins')),
         "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins')),
