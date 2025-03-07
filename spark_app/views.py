@@ -14,7 +14,13 @@ from .models import (
     CityCheckinRanking,
     CheckinPerHour,
     CheckinPerYear,
-    EliteUserPercent
+    EliteUserPercent,
+    NewUserEveryYear,
+    ReviewCount,
+    FanMost,
+    UserEveryYear,
+    ReviewCountYear,
+    TotalAndSilent,
 )
 # 初始化和统计
 @require_http_methods(['GET'])
@@ -38,6 +44,12 @@ def update_statistics(request):
     CheckinPerHour.objects.all().delete()
     CheckinPerYear.objects.all().delete()
     EliteUserPercent.objects.all().delete()
+    NewUserEveryYear.objects.all().delete()
+    ReviewCount.objects.all().delete()
+    FanMost.objects.all().delete()
+    UserEveryYear.objects.all().delete()
+    ReviewCountYear.objects.all().delete()
+    TotalAndSilent.objects.all().delete()
 
     # 保存数据
     for shop in statistics['most_common_shop']:
@@ -92,6 +104,52 @@ def update_statistics(request):
             ratio=ratio['ratio']
         )
 
+
+    # 分析每年加入的用户数量
+    for new_user in statistics['new_user_every_year']:
+        NewUserEveryYear.objects.create(
+            year=new_user['year'],
+            user_count=new_user['user_count']
+        )
+
+    # 统计评论达人
+    for review in statistics['review_count']:
+        ReviewCount.objects.create(
+            user_id=review['user_id'],
+            name=review['name'],
+            review_count=review['review_count'],
+        )
+
+    # 统计人气最高的用户（fans）
+    for fans in statistics['fans_most']:
+        FanMost.objects.create(
+            user_id=fans['user_id'],
+            name=fans['name'],
+            fans=fans['name']
+        )
+
+    # 每年的新用户数
+    for user in statistics['user_every_year']:
+        UserEveryYear.objects.create(
+            new_user=user['new_user']
+        )
+
+    # 每年的评论数
+    for review_count in statistics['review_count_year']:
+        ReviewCountYear.objects.create(
+            review=review_count['review']
+        )
+
+    # 统计每年的总用户数和沉默用户数
+    for tas in statistics['total_and_silent']:
+        TotalAndSilent.objects.create(
+            year=tas['year'],
+            total_users=tas['total_users'],
+            reviewed_users=tas['reviewed_users'],
+            silent_users=tas['silent_users'],
+            silent_ratio=tas['silent_ratio'],
+        )
+
     return JsonResponse({"message": "Update data succeeded"})
 
 @require_http_methods(['GET'])
@@ -115,6 +173,18 @@ def get_statistics(request):
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
         "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
+        # 新的
+        "new_user_every_year": list(NewUserEveryYear.objects.all().values('year', 'user_count')),
+        # 统计评论达人
+        "review_count": list(ReviewCount.objects.all().values('user_id', 'name', 'review_count')),
+        # 统计人气最高的用户（fans）
+        "fans_most": list(FanMost.objects.all().values('user_id', 'name', 'fans')),
+        # 每年的新用户数
+        "user_every_year": list(UserEveryYear.objects.all().values('new_user')),
+        # 每年的评论数
+        "review_count_year": list(ReviewCountYear.objects.all().values('review')),
+        # 统计每年的总用户数和沉默用户数
+        "total_and_silent": list(TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users', 'silent_ratio')),
     }
 
     return JsonResponse(statistics)

@@ -60,10 +60,15 @@ def clean():
     """).collect()
 
     # 收获五星评论最多的商户（前20）
-    five_stars_most = spark.sql("Select business.business_id , business.name ,count(*) as five_stars_counts "
-                                "from default.business,default.review "
-                                "where business.business_id = review.business_id and review.stars = 5.0 "
-                                "group by business.business_id , business.name")
+    five_stars_most = spark.sql("""
+            SELECT b.business_id, b.name, COUNT(r.stars) AS five_stars_counts
+            FROM default.business AS b
+            JOIN default.review AS r ON b.business_id = r.business_id
+            WHERE r.stars = 5.0
+            GROUP BY b.business_id, b.name
+            ORDER BY five_stars_counts DESC
+            LIMIT 20
+        """).collect()
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
@@ -231,8 +236,6 @@ def clean():
     """)
 
 
-
-
     # 5星评价最多的前5个商家
     top5_businesses = spark.sql("""
     SELECT 
@@ -248,7 +251,7 @@ def clean():
 
 
     # 分析每年加入的用户数量
-    user_every_year = spark.sql("""
+    new_user_every_year = spark.sql("""
     SELECT 
         YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
         COUNT(*) AS user_count 
@@ -259,7 +262,7 @@ def clean():
     """)
 
     # 统计评论达人（review_count）
-    review_count = spark.sql("SELECT user_id, name, review_count FROM default.users order by user_review_count DESC")
+    review_count = spark.sql("SELECT user_id, name, review_count FROM default.users order by review_count DESC")
 
     # 统计人气最高的用户（fans）
     fans_most = spark.sql("select user_id, name, fans from default.users order by fans DESC")
@@ -280,6 +283,7 @@ def clean():
     window_spec = Window.orderBy("user_year").rowsBetween(Window.unboundedPreceding, Window.currentRow)
     annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
 
+    # 统计每年的总用户数和沉默用户数
     # Step 2: 统计每年有评论的用户数
     review_users = spark.sql("""
         SELECT
@@ -300,6 +304,7 @@ def clean():
         .withColumn("silent_ratio", col("silent_users") / col("total_users"))
 
     # Step 4: 选择需要的列并重命名
+    # 统计每年的总用户数和沉默用户数
     total_and_silent = result.select(
         col("user_year").alias("year"),
         col("total_users"),
@@ -309,8 +314,9 @@ def clean():
     ).orderBy("year")
 
     # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
-    user_every_year = spark.sql("select count(*) from default.users group by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
-    review_count_year = spark.sql("select count(*) from default.review group by YEAR(STR_TO_DATE(data, '%Y-%m-%d')) order by YEAR(STR_TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+    user_every_year = spark.sql("select count(*) as new_user from default.users group by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
+    # 每年的评论数
+    review_count_year = spark.sql("select count(*) as review from default.review group by YEAR(TO_DATE(date, '%Y-%m-%d')) order by YEAR(TO_DATE(date, '%Y-%m-%d')) DESC")
 
 
     spark.stop()
@@ -331,5 +337,18 @@ def clean():
         "tips_per_year": tips_per_year,
         "stars_in_1-5": stars_dist,
         "review_in_week": review_in_week,
-        "top5_businesses": top5_businesses
+        "top5_businesses": top5_businesses,
+        # 新加入的
+        # 分析每年加入的用户数量
+        "new_user_every_year": new_user_every_year,
+        # 统计评论达人
+        "review_count": review_count,
+        # 统计人气最高的用户（fans）
+        "fans_most": fans_most,
+        # 每年的新用户数
+        "user_every_year": user_every_year,
+        # 每年的评论数
+        "review_count_year": review_count_year,
+        # 统计每年的总用户数和沉默用户数
+        "total_and_silent": total_and_silent,
     }
