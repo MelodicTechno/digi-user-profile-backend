@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'spark_app'
+    'spark_app',
+    'myapp',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
