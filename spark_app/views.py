@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
-from django.core.cache import cache
+
 from .models import (
     MostCommonShop,
     ShopMostCity,
@@ -20,7 +20,7 @@ from .models import (
     FanMost,
     UserEveryYear,
     ReviewCountYear,
-    TotalAndSilent,
+    TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses,
 )
 # 初始化和统计
 @require_http_methods(['GET'])
@@ -32,85 +32,11 @@ def update_statistics(request):
     statistics = analyse.clean()
 
     # 清空现有数据
-    # MostCommonShop.objects.all().delete()
-    # ShopMostCity.objects.all().delete()
-    # ShopMostState.objects.all().delete()
-    # CommonWithRate.objects.all().delete()
-    # StarsHighCity.objects.all().delete()
-    # MostStars.objects.all().delete()
-    # ReviewInYear.objects.all().delete()
-    # BusinessCheckinRanking.objects.all().delete()
-    # CityCheckinRanking.objects.all().delete()
-    # CheckinPerHour.objects.all().delete()
-    # CheckinPerYear.objects.all().delete()
-    # EliteUserPercent.objects.all().delete()
-    # NewUserEveryYear.objects.all().delete()
     ReviewCount.objects.all().delete()
     FanMost.objects.all().delete()
     UserEveryYear.objects.all().delete()
     ReviewCountYear.objects.all().delete()
     TotalAndSilent.objects.all().delete()
-
-    # 保存数据
-    # for shop in statistics['most_common_shop']:
-    #     MostCommonShop.objects.create(name=shop[0], shop_count=shop[1])
-    #
-    # for city in statistics['shop_most_city']:
-    #     ShopMostCity.objects.create(city=city[0], shop_count=city[1])
-    #
-    # for state in statistics['shop_most_state']:
-    #     ShopMostState.objects.create(state=state[0], shop_count=state[1])
-    #
-    # for rate in statistics['common_with_rate']:
-    #     CommonWithRate.objects.create(name=rate[0], avg_stars=rate[1])
-    #
-    # for city in statistics['stars_high_city']:
-    #     StarsHighCity.objects.create(city=city[0], average_stars=city[1])
-    #
-    # for stars in statistics['most_stars']:
-    #     MostStars.objects.create(business_id=stars[0], business_name=stars[1], five_stars_counts=stars[2])
-    #
-    # for review in statistics['review_in_year']:
-    #     ReviewInYear.objects.create(year=review[0], review_count=review[1])
-    #
-    # for ranking in statistics['business_checkin_ranking']:
-    #     BusinessCheckinRanking.objects.create(
-    #         name=ranking['name'],
-    #         city=ranking['city'],
-    #         total_checkins=ranking['total_checkins']
-    #     )
-
-    # for ranking in statistics['city_checkin_ranking']:
-    #     CityCheckinRanking.objects.create(
-    #         city=ranking['city'],
-    #         total_checkins=ranking['total_checkins']
-    #     )
-
-    # for count in statistics['checkin_per_hour']:
-    #     CheckinPerHour.objects.create(
-    #         hour=count['hour'],
-    #         checkin_count=count['count']
-    #     )
-    #
-    # for count in statistics['checkin_per_year']:
-    #     CheckinPerYear.objects.create(
-    #         year=count['year'],
-    #         checkin_count=count['count']
-    #     )
-
-    # for ratio in statistics['elite_user_percent']:
-    #     EliteUserPercent.objects.create(
-    #         year=ratio['year'],
-    #         ratio=ratio['ratio']
-    #     )
-
-
-    # 分析每年加入的用户数量
-    # for new_user in statistics['new_user_every_year']:
-    #     NewUserEveryYear.objects.create(
-    #         year=new_user['year'],
-    #         user_count=new_user['user_count']
-    #     )
 
     # 统计评论达人
     for review in statistics['review_count']:
@@ -155,7 +81,13 @@ def update_statistics(request):
 # 更新商户统计数据
 @require_http_methods(['GET'])
 def update_business_statistics(request):
-    statistics = analyse.update_business()
+
+    # 更新数据
+    try:
+        statistics = analyse.update_business()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update business data: {str(e)}"}, status=500)
+
     # 清空现有数据
     MostCommonShop.objects.all().delete()
     ShopMostCity.objects.all().delete()
@@ -228,7 +160,11 @@ def update_business_statistics(request):
 # 更新用户统计数据
 @require_http_methods(['GET'])
 def update_user_statistics(request):
-    statistics = analyse.update_users()
+    # 更新数据
+    try:
+        statistics = analyse.update_users()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update user data: {str(e)}"}, status=500)
 
     # 清空现有数据
     NewUserEveryYear.objects.all().delete()
@@ -261,11 +197,6 @@ def update_user_statistics(request):
             fans=fans['fans']
         )
 
-    # 每年的新用户数
-    # for user in statistics['user_every_year']:
-    #     UserEveryYear.objects.create(
-    #         new_user=user['new_user']
-    #     )
 
     # 每年的评论数
     for review_count in statistics['review_count_year']:
@@ -284,6 +215,44 @@ def update_user_statistics(request):
         )
 
     return JsonResponse({"message": "Update user data succeeded"})
+
+
+@require_http_methods(['GET'])
+def update_score_statistics(request):
+    # 更新数据
+    try:
+        statistics = analyse.update_scores()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update score data: {str(e)}"}, status=500)
+
+    # 清空现有数据
+    StarsDistribution.objects.all().delete()
+    ReviewInWeek.objects.all().delete()
+    Top5Businesses.objects.all().delete()
+
+    # 评分分布（1-5）
+    for star in statistics['stars_dist']:
+        StarsDistribution.objects.create(
+            rating=star['rating'],
+            review_count=star['review_count']
+        )
+
+    # 每周各天的评分次数
+    for review in statistics['review_in_week']:
+        ReviewInWeek.objects.create(
+            weekday_name=review['weekday_name'],
+            review_count=review['review_count']
+        )
+
+    # 5星评价最多的前5个商家
+    for business in statistics['top5_businesses']:
+        Top5Businesses.objects.create(
+            business_id=business['business_id'],
+            five_star_count=business['five_star_count']
+        )
+
+    return JsonResponse({"message": "Update score data succeeded"})
+
 
 
 @require_http_methods(['GET'])
@@ -363,6 +332,19 @@ def get_user_statistics(request):
         "total_and_silent": list(
             TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users',
                                                 'silent_ratio')),
+    }
+
+    return JsonResponse(statistics)
+
+@require_http_methods(['GET'])
+def get_score_statistics(request):
+    statistics = {
+        # 评分分布（1-5）
+        "stars_dist": list(StarsDistribution.objects.all().values('rating', 'review_count')),
+        # 每周各天的评分次数
+        "review_in_week": list(ReviewInWeek.objects.all().values('weekday_name', 'review_count')),
+        # 5星评价最多的前5个商家
+        "top5_businesses": list(Top5Businesses.objects.all().values('business_id', 'five_star_count')),
     }
 
     return JsonResponse(statistics)
