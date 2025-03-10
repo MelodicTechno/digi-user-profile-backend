@@ -117,8 +117,6 @@ def clean():
     # 修改
     city_ranking = [row.asDict() for row in city_ranking]
 
-
-
     # 每小时打卡数统计
     hive_df = spark.sql("SELECT * FROM default.checkin")
     exploded_df = hive_df.select(
@@ -130,7 +128,15 @@ def clean():
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
     processed_df = processed_df.withColumn("hour", hour(col("datetime")))
-    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour")
+
+    # 按小时分组，统计每小时的打卡次数，并按小时排序
+    hourly_counts_df = processed_df.groupBy("hour") \
+        .count() \
+        .orderBy("hour")
+
+    # 将结果收集到 Python 列表中，并将每一行转换为字典
+    hourly_counts = hourly_counts_df.collect()
+    hourly_counts = [row.asDict() for row in hourly_counts]  # 将 Row 对象转换为字典
 
 
 
@@ -141,8 +147,8 @@ def clean():
     ).withColumn("year", year(col("datetime")))
     yearly_counts = processed_df.groupBy("year").count().orderBy("year")
 
-
-
+    yearly_counts = yearly_counts.collect()
+    yearly_counts = [row.asDict() for row in yearly_counts]
 
     # 精英用户比
     user_df = spark.sql("SELECT * FROM default.users")
@@ -153,18 +159,23 @@ def clean():
         .withColumn("elite_years", split(col("elite"), ","))
         .withColumn("elite_years", expr("array_distinct(elite_years)"))
         .withColumn("elite_years", expr("filter(elite_years, x -> x != '')"))
-        # 修改这里的关键转换逻辑
         .withColumn("elite_years", expr("TRANSFORM(elite_years, x -> CAST(x AS INT))"))
         .withColumn("elite_years", expr("filter(elite_years, x -> x IS NOT NULL)"))
         .withColumn("reg_year", year(to_date(col("yelping_since"), "yyyy-MM-dd HH:mm:ss")))
     )
+
+    # 计算最大注册年份和最大精英年份
     max_reg_year = processed_df.agg({"reg_year": "max"}).first()[0]
     max_elite_year = processed_df.select(explode("elite_years")).agg({"col": "max"}).first()[0]
     last_year = max(max_reg_year, max_elite_year) if max_elite_year else max_reg_year
+
+    # 生成用户活跃年份序列
     users_with_years = processed_df.withColumn(
         "active_years",
         sequence(col("reg_year"), lit(last_year))
     )
+
+    # 展开活跃年份并标记是否为精英用户
     yearly_status = (
         users_with_years
         .select(
@@ -174,7 +185,9 @@ def clean():
         )
         .withColumn("is_elite", expr("array_contains(elite_years, year)"))
     )
-    elite_user_percent = (
+
+    # 按年份分组，计算精英用户比例
+    elite_user_percent_df = (
         yearly_status
         .groupBy("year")
         .agg(
@@ -188,6 +201,10 @@ def clean():
         .orderBy("year")
         .select("year", "ratio")
     )
+
+    # 将结果收集到 Python 列表中，并将每一行转换为字典
+    elite_user_percent = elite_user_percent_df.collect()
+    elite_user_percent = [row.asDict() for row in elite_user_percent]  # 将 Row 对象转换为字典
 
 
     # 每年 tip 数
@@ -266,12 +283,19 @@ def clean():
     GROUP BY 
         YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
     """)
+    new_user_every_year = new_user_every_year.collect()
+    new_user_every_year = [row.asDict() for row in new_user_every_year]
 
     # 统计评论达人（review_count）
     review_count = spark.sql("SELECT user_id, name, review_count FROM default.users order by review_count DESC")
+    review_count = review_count.collect()
+    review_count = [row.asDict() for row in review_count]
+
 
     # 统计人气最高的用户（fans）
-    fans_most = spark.sql("select user_id, name, fans from default.users order by fans DESC")
+    fans_most = spark.sql("select user_id, name, fans from default.users order by fans DESC LIMIT 10")
+    fans_most = fans_most.collect()
+    fans_most = [row.asDict() for row in fans_most]
 
     # 显示每年总用户数、沉默用户数(未写评论)的比例
     annual_users = spark.sql("""
@@ -290,7 +314,6 @@ def clean():
     annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
 
     # 统计每年的总用户数和沉默用户数
-    # Step 2: 统计每年有评论的用户数
     review_users = spark.sql("""
         SELECT
             YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
@@ -303,13 +326,14 @@ def clean():
             review_year
     """)
 
-    # Step 3: 合并数据并计算沉默用户数和比例
+
+
     result = annual_users.join(review_users, annual_users.user_year == review_users.review_year, "left") \
         .withColumn("reviewed_users", when(col("reviewed_users").isNull(), lit(0)).otherwise(col("reviewed_users"))) \
         .withColumn("silent_users", col("total_users") - col("reviewed_users")) \
         .withColumn("silent_ratio", col("silent_users") / col("total_users"))
 
-    # Step 4: 选择需要的列并重命名
+
     # 统计每年的总用户数和沉默用户数
     total_and_silent = result.select(
         col("user_year").alias("year"),
@@ -319,10 +343,14 @@ def clean():
         col("silent_ratio")
     ).orderBy("year")
 
-    # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
+    total_and_silent = total_and_silent.collect()
+    total_and_silent = [row.asDict() for row in total_and_silent]
+
+    # 统计出每年的新用户数、评论数
     user_every_year = spark.sql("select count(*) as new_user from default.users group by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
     # 每年的评论数
     review_count_year = spark.sql("select count(*) as review from default.review group by YEAR(TO_DATE(date, '%Y-%m-%d')) order by YEAR(TO_DATE(date, '%Y-%m-%d')) DESC")
+
 
 
     spark.stop()

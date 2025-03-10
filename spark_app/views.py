@@ -32,19 +32,19 @@ def update_statistics(request):
     statistics = analyse.clean()
 
     # 清空现有数据
-    MostCommonShop.objects.all().delete()
-    ShopMostCity.objects.all().delete()
-    ShopMostState.objects.all().delete()
-    CommonWithRate.objects.all().delete()
-    StarsHighCity.objects.all().delete()
-    MostStars.objects.all().delete()
-    ReviewInYear.objects.all().delete()
-    BusinessCheckinRanking.objects.all().delete()
-    CityCheckinRanking.objects.all().delete()
-    CheckinPerHour.objects.all().delete()
-    CheckinPerYear.objects.all().delete()
-    EliteUserPercent.objects.all().delete()
-    NewUserEveryYear.objects.all().delete()
+    # MostCommonShop.objects.all().delete()
+    # ShopMostCity.objects.all().delete()
+    # ShopMostState.objects.all().delete()
+    # CommonWithRate.objects.all().delete()
+    # StarsHighCity.objects.all().delete()
+    # MostStars.objects.all().delete()
+    # ReviewInYear.objects.all().delete()
+    # BusinessCheckinRanking.objects.all().delete()
+    # CityCheckinRanking.objects.all().delete()
+    # CheckinPerHour.objects.all().delete()
+    # CheckinPerYear.objects.all().delete()
+    # EliteUserPercent.objects.all().delete()
+    # NewUserEveryYear.objects.all().delete()
     ReviewCount.objects.all().delete()
     FanMost.objects.all().delete()
     UserEveryYear.objects.all().delete()
@@ -52,65 +52,65 @@ def update_statistics(request):
     TotalAndSilent.objects.all().delete()
 
     # 保存数据
-    for shop in statistics['most_common_shop']:
-        MostCommonShop.objects.create(name=shop[0], shop_count=shop[1])
+    # for shop in statistics['most_common_shop']:
+    #     MostCommonShop.objects.create(name=shop[0], shop_count=shop[1])
+    #
+    # for city in statistics['shop_most_city']:
+    #     ShopMostCity.objects.create(city=city[0], shop_count=city[1])
+    #
+    # for state in statistics['shop_most_state']:
+    #     ShopMostState.objects.create(state=state[0], shop_count=state[1])
+    #
+    # for rate in statistics['common_with_rate']:
+    #     CommonWithRate.objects.create(name=rate[0], avg_stars=rate[1])
+    #
+    # for city in statistics['stars_high_city']:
+    #     StarsHighCity.objects.create(city=city[0], average_stars=city[1])
+    #
+    # for stars in statistics['most_stars']:
+    #     MostStars.objects.create(business_id=stars[0], business_name=stars[1], five_stars_counts=stars[2])
+    #
+    # for review in statistics['review_in_year']:
+    #     ReviewInYear.objects.create(year=review[0], review_count=review[1])
+    #
+    # for ranking in statistics['business_checkin_ranking']:
+    #     BusinessCheckinRanking.objects.create(
+    #         name=ranking['name'],
+    #         city=ranking['city'],
+    #         total_checkins=ranking['total_checkins']
+    #     )
 
-    for city in statistics['shop_most_city']:
-        ShopMostCity.objects.create(city=city[0], shop_count=city[1])
+    # for ranking in statistics['city_checkin_ranking']:
+    #     CityCheckinRanking.objects.create(
+    #         city=ranking['city'],
+    #         total_checkins=ranking['total_checkins']
+    #     )
 
-    for state in statistics['shop_most_state']:
-        ShopMostState.objects.create(state=state[0], shop_count=state[1])
+    # for count in statistics['checkin_per_hour']:
+    #     CheckinPerHour.objects.create(
+    #         hour=count['hour'],
+    #         checkin_count=count['count']
+    #     )
+    #
+    # for count in statistics['checkin_per_year']:
+    #     CheckinPerYear.objects.create(
+    #         year=count['year'],
+    #         checkin_count=count['count']
+    #     )
 
-    for rate in statistics['common_with_rate']:
-        CommonWithRate.objects.create(name=rate[0], avg_stars=rate[1])
-
-    for city in statistics['stars_high_city']:
-        StarsHighCity.objects.create(city=city[0], average_stars=city[1])
-
-    for stars in statistics['most_stars']:
-        MostStars.objects.create(business_id=stars[0], business_name=stars[1], five_stars_counts=stars[2])
-
-    for review in statistics['review_in_year']:
-        ReviewInYear.objects.create(year=review[0], review_count=review[1])
-
-    for ranking in statistics['business_checkin_ranking']:
-        BusinessCheckinRanking.objects.create(
-            name=ranking['name'],
-            city=ranking['city'],
-            total_checkins=ranking['total_checkins']
-        )
-
-    for ranking in statistics['city_checkin_ranking']:
-        CityCheckinRanking.objects.create(
-            city=ranking['city'],
-            total_checkins=ranking['total_checkins']
-        )
-
-    for count in statistics['checkin_per_hour']:
-        CheckinPerHour.objects.create(
-            hour=count['hour'],
-            checkin_count=count['count']
-        )
-
-    for count in statistics['checkin_per_year']:
-        CheckinPerYear.objects.create(
-            year=count['year'],
-            checkin_count=count['count']
-        )
-
-    for ratio in statistics['elite_user_percent']:
-        EliteUserPercent.objects.create(
-            year=ratio['year'],
-            ratio=ratio['ratio']
-        )
+    # for ratio in statistics['elite_user_percent']:
+    #     EliteUserPercent.objects.create(
+    #         year=ratio['year'],
+    #         ratio=ratio['ratio']
+    #     )
 
 
     # 分析每年加入的用户数量
-    for new_user in statistics['new_user_every_year']:
-        NewUserEveryYear.objects.create(
-            year=new_user['year'],
-            user_count=new_user['user_count']
-        )
+    # for new_user in statistics['new_user_every_year']:
+    #     NewUserEveryYear.objects.create(
+    #         year=new_user['year'],
+    #         user_count=new_user['user_count']
+    #     )
 
     # 统计评论达人
     for review in statistics['review_count']:
@@ -169,14 +169,14 @@ def get_statistics(request):
         "most_stars": list(MostStars.objects.all().values('business_id', 'business_name', 'five_stars_counts')),
         "review_in_year": list(ReviewInYear.objects.all().values('year', 'review_count')),
         "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins'))[:10],
-        "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins')),
+        "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
         "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
         # 新的
         "new_user_every_year": list(NewUserEveryYear.objects.all().values('year', 'user_count')),
         # 统计评论达人
-        "review_count": list(ReviewCount.objects.all().values('user_id', 'name', 'review_count')),
+        "review_count": list(ReviewCount.objects.all().values('user_id', 'name', 'review_count'))[:10],
         # 统计人气最高的用户（fans）
         "fans_most": list(FanMost.objects.all().values('user_id', 'name', 'fans')),
         # 每年的新用户数
