@@ -139,7 +139,7 @@ class UserEveryYear(models.Model):
 
 # 每年的评论数
 class ReviewCountYear(models.Model):
-    year = models.IntegerField()
+    year = models.IntegerField(null=True, blank=True)
     review = models.IntegerField()
 
     def __str__(self):
@@ -179,6 +179,7 @@ class ReviewInWeek(models.Model):
 
 class Top5Businesses(models.Model):
     business_id = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null=True, blank=True)
     five_star_count = models.IntegerField()
 
     def __str__(self):
