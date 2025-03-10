@@ -1,4 +1,7 @@
+import json
+
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from django.core.cache import cache
@@ -16,6 +19,9 @@ from .models import (
     CheckinPerYear,
     EliteUserPercent
 )
+from .utils.function.distance import nearby_shop
+
+
 # 初始化和统计
 @require_http_methods(['GET'])
 def for_test(request):
@@ -145,3 +151,20 @@ def filter_businesses(request):
 def get_review_recommendations(request, user_id):
     # 实现推荐逻辑
     return JsonResponse({"message": "Review recommendations"})
+
+
+@csrf_exempt
+def shop_nearby(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)  # 解析 JSON 数据
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+
+        if latitude is None or longitude is None:
+            return JsonResponse({'status': 'error', 'message': '缺少必要的参数'}, status=400)
+
+        # 返回响应
+        return nearby_shop(latitude, longitude)
+
+
+    return JsonResponse({'status': 'error', 'message': '仅支持 POST 请求'}, status=405)

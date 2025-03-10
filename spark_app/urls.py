@@ -7,7 +7,7 @@ from .views import (
     get_business_details,
     sort_businesses,
     filter_businesses,
-    get_review_recommendations, update_statistics,
+    get_review_recommendations, update_statistics, shop_nearby,
 )
 
 urlpatterns = [
@@ -20,4 +20,5 @@ urlpatterns = [
     path('businesses/sort/', sort_businesses, name='sort_businesses'),
     path('businesses/filter/', filter_businesses, name='filter_businesses'),
     path('recommendations/reviews/<int:user_id>/', get_review_recommendations, name='get_review_recommendations'),
+    path('statistics/nearby/', shop_nearby, name='recommend_shop_nearby'),
 ]
