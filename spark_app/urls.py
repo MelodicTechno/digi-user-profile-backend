@@ -23,6 +23,7 @@ urlpatterns = [
     path('update_business_statistics/', update_business_statistics, name='update_business_statistics'),
     path('update_user_statistics/', update_user_statistics, name='update_user_statistics'),
     path('update_score_statistics/', update_score_statistics, name='update_score_statistics'),
+    path('update_review_statistics/', update_review_statistics, name='update_reviews_statistics'),
     path('businesses/nearby/<str:latitude>/<str:longitude>/', list_nearby_businesses, name='list_nearby_businesses'),
     path('businesses/<int:business_id>/', get_business_details, name='get_business_details'),
     path('businesses/sort/', sort_businesses, name='sort_businesses'),
