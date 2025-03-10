@@ -262,10 +262,10 @@ def update_user_statistics(request):
         )
 
     # 每年的新用户数
-    for user in statistics['user_every_year']:
-        UserEveryYear.objects.create(
-            new_user=user['new_user']
-        )
+    # for user in statistics['user_every_year']:
+    #     UserEveryYear.objects.create(
+    #         new_user=user['new_user']
+    #     )
 
     # 每年的评论数
     for review_count in statistics['review_count_year']:
