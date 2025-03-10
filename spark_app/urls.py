@@ -10,6 +10,7 @@ from .views import (
     get_review_recommendations, update_statistics,
     get_business_statistics, get_user_statistics,
     update_user_statistics, update_business_statistics, update_score_statistics, get_score_statistics,
+    update_review_statistics, get_review_statistics,
 )
 
 urlpatterns = [
@@ -19,6 +20,7 @@ urlpatterns = [
     path('get_user_statistics/', get_user_statistics, name='get_user_statistics'),
     path('get_business_statistics/', get_business_statistics, name='get_business_statistics'),
     path('get_score_statistics/', get_score_statistics, name='get_score_statistics'),
+    path('get_review_statistics/', get_review_statistics, name='get_review_statistics'),
     path('update_statistics/', update_statistics, name='update_statistics'),
     path('update_business_statistics/', update_business_statistics, name='update_business_statistics'),
     path('update_user_statistics/', update_user_statistics, name='update_user_statistics'),
