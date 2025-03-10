@@ -113,7 +113,7 @@ class NewUserEveryYear(models.Model):
 
 # 统计评论达人
 class ReviewCount(models.Model):
-    user_id = models.IntegerField()
+    user_id = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     review_count = models.IntegerField()
 
@@ -123,7 +123,7 @@ class ReviewCount(models.Model):
 
 # 统计人气最高的用户（fans）
 class FanMost(models.Model):
-    user_id = models.IntegerField()
+    user_id = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     fans = models.IntegerField()
 
