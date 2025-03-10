@@ -143,7 +143,7 @@ class ReviewCountYear(models.Model):
     review = models.IntegerField()
 
     def __str__(self):
-        return str(self.review)
+        return f"{self.year}: {self.review}"
 
 # 统计每年的总用户数和沉默用户数
 class TotalAndSilent(models.Model):
@@ -154,4 +154,32 @@ class TotalAndSilent(models.Model):
     silent_ratio = models.FloatField()
 
     def __str__(self):
-        return f'year:{self.year} total_users:{self.total_users}'
+        return f'year: {self.year} total_users: {self.total_users}'
+
+class TipsPerYear(models.Model):
+    year = models.IntegerField()
+    tip_count = models.IntegerField()
+
+    def __str__(self):
+        return f'year: {self.year} tip_count: {self.tip_count}'
+
+class StarsDistribution(models.Model):
+    rating = models.IntegerField()
+    review_count = models.IntegerField()
+
+    def __str__(self):
+        return f'rating: {self.rating} review: {self.review_count}'
+
+class ReviewInWeek(models.Model):
+    weekday_name = models.CharField(max_length=10)
+    review_count = models.IntegerField()
+
+    def __str__(self):
+        return f'weekday_name: {self.weekday_name} review_count: {self.weekday_name}'
+
+class Top5Businesses(models.Model):
+    business_id = models.CharField(max_length=255)
+    five_star_count = models.IntegerField()
+
+    def __str__(self):
+        return f'business_id: {self.business_id} five_star_count: {self.five_star_count}'

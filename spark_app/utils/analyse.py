@@ -14,6 +14,7 @@ def clean():
         .getOrCreate()
 
 
+
     # 美国最常见商户（前20）
     most_common_shop = spark.sql("""
         SELECT name, COUNT(*) AS shop_count
@@ -362,37 +363,6 @@ def clean():
 
     spark.stop()
 
-    return {
-        "most_common_shop": most_common_shop,
-        "shop_most_city": shop_most_city,
-        "shop_most_state": shop_most_state,
-        "common_with_rate": common_with_rate,
-        "stars_high_city": stars_high_city,
-        "most_stars": five_stars_most,
-        "review_in_year": review_in_year,
-        "business_checkin_ranking": business_ranking,
-        "city_checkin_ranking": city_ranking,
-        "checkin_per_hour": hourly_counts,
-        "checkin_per_year": yearly_counts,
-        "elite_user_percent": elite_user_percent,
-        "tips_per_year": tips_per_year,
-        "stars_in_1-5": stars_dist,
-        "review_in_week": review_in_week,
-        "top5_businesses": top5_businesses,
-        # 新加入的
-        # 分析每年加入的用户数量
-        "new_user_every_year": new_user_every_year,
-        # 统计评论达人
-        "review_count": review_count,
-        # 统计人气最高的用户（fans）
-        "fans_most": fans_most,
-        # 每年的新用户数
-        "user_every_year": user_every_year,
-        # 每年的评论数
-        "review_count_year": review_count_year,
-        # 统计每年的总用户数和沉默用户数
-        "total_and_silent": total_and_silent,
-    }
 
 # 对商户统计数据的更新
 def update_business():
@@ -675,6 +645,21 @@ def update_users():
     total_and_silent = total_and_silent.collect()
     total_and_silent = [row.asDict() for row in total_and_silent]
 
+    # 每年 tip 数
+    tips_per_year = spark.sql("""
+                SELECT 
+                    YEAR(date) AS year,
+                    COUNT(*) AS tip_count
+                FROM 
+                    default.tip
+                WHERE 
+                    date IS NOT NULL  -- 过滤空值
+                GROUP BY 
+                    YEAR(date)
+                ORDER BY 
+                    year
+        """).collect()
+
     # 统计出每年的新用户数、评论数、精英用户、tip数、打卡数
     # user_every_year = spark.sql(
     #     "select count(*) as new_user from default.users group by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
@@ -712,4 +697,67 @@ def update_users():
         "review_count_year": review_count_year,
         # 统计每年的总用户数和沉默用户数
         "total_and_silent": total_and_silent,
+        'tips_per_year': tips_per_year,
+    }
+
+# 更新评分
+def update_scores():
+    spark = SparkSession.builder \
+        .appName("HiveExample") \
+        .config("spark.sql.warehouse.dir", "user/hive/warehouse") \
+        .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+        .enableHiveSupport() \
+        .getOrCreate()
+
+    # 评分分布（1-5）
+    stars_dist = spark.sql("""
+        SELECT
+            stars.cast('int') AS rating,
+            COUNT(*) AS review_count
+        FROM default.review
+        WHERE stars IS NOT NULL
+        GROUP BY stars.cast('int')
+        ORDER BY rating
+    """).collect()
+
+    # 每周各天的评分次数
+    review_in_week = spark.sql("""
+        WITH weekday_data AS (
+            SELECT 
+                date_format(to_date(date), 'EEEE') AS weekday_name,
+                CASE 
+                    WHEN extract(dayofweek FROM to_date(date)) = 1 THEN 7  -- Sunday
+                    ELSE extract(dayofweek FROM to_date(date)) - 1 
+                END AS weekday_num,
+                review_id
+            FROM default.review
+            WHERE date IS NOT NULL
+        )
+        SELECT 
+            weekday_name,
+            COUNT(review_id) AS review_count
+        FROM weekday_data
+        WHERE weekday_num IS NOT NULL
+        GROUP BY weekday_name, weekday_num
+        ORDER BY weekday_num
+        """)
+
+    # 5星评价最多的前5个商家
+    top5_businesses = spark.sql("""
+    SELECT 
+        business_id, 
+        COUNT(*) AS five_star_count
+    FROM default.review
+    WHERE CAST(stars AS INT) = 5 AND stars IS NOT NULL
+    GROUP BY business_id
+    ORDER BY five_star_count DESC
+    LIMIT 5
+    """)
+
+    spark.stop()
+
+    return {
+        'stars_dist': stars_dist,
+        'review_in_week': review_in_week,
+        'top5_businesses': top5_businesses,
     }
