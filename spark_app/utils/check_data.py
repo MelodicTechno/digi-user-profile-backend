@@ -17,8 +17,8 @@ spark = SparkSession.builder \
 # hive_most_common_shop = spark.sql("SELECT default.business.name, COUNT(*) AS shop_count FROM default.business GROUP BY name ORDER BY shop_count DESC")
 # hive_most_common_shop.show(truncate=False)  # 显示统计结果
 #读取 Hive 表
-hive_df = spark.sql("SELECT count(*) FROM default.users")
-hive_df.show(truncate=False)
+# hive_df = spark.sql("SELECT count(*) FROM default.users")
+# hive_df.show(truncate=False)
 
 '''
 #数据清洗
@@ -89,52 +89,52 @@ temp_df.write.mode("overwrite").saveAsTable("default.business")
 # hive_df_temp = spark.sql("select * from default.users")
 # users = hive_df_temp.withColumn("year", year(to_date(col("yelping_since"), "yyyy-MM-dd")))
 # users.write.mode("overwrite").saveAsTable("default.temp_users")
-
-annual_users = spark.sql("""
-    SELECT
-        YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
-        COUNT(DISTINCT user_id) AS new_users
-    FROM
-        default.users
-    GROUP BY
-        YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
-    ORDER BY
-        year
-""").withColumnRenamed("year", "user_year")
-
-window_spec = Window.orderBy("user_year").rowsBetween(Window.unboundedPreceding, Window.currentRow)
-annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
-
-# Step 2: 统计每年有评论的用户数
-review_users = spark.sql("""
-    SELECT
-        YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
-        COUNT(DISTINCT user_id) AS reviewed_users
-    FROM
-        review
-    GROUP BY
-        YEAR(to_date(date, 'yyyy-MM-dd'))
-    ORDER BY
-        review_year
-""")
-
-# Step 3: 合并数据并计算沉默用户数和比例
-result = annual_users.join(review_users, annual_users.user_year == review_users.review_year, "left") \
-                     .withColumn("reviewed_users", when(col("reviewed_users").isNull(), lit(0)).otherwise(col("reviewed_users"))) \
-                     .withColumn("silent_users", col("total_users") - col("reviewed_users")) \
-                     .withColumn("silent_ratio", col("silent_users") / col("total_users"))
-
-# Step 4: 选择需要的列并重命名
-result = result.select(
-    col("user_year").alias("year"),
-    col("total_users"),
-    col("reviewed_users"),
-    col("silent_users"),
-    col("silent_ratio")
-).orderBy("year")
-
-# 显示结果
-result.show(truncate=False)
+#
+# annual_users = spark.sql("""
+#     SELECT
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd')) AS year,
+#         COUNT(DISTINCT user_id) AS new_users
+#     FROM
+#         default.users
+#     GROUP BY
+#         YEAR(to_date(yelping_since, 'yyyy-MM-dd'))
+#     ORDER BY
+#         year
+# """).withColumnRenamed("year", "user_year")
+#
+# window_spec = Window.orderBy("user_year").rowsBetween(Window.unboundedPreceding, Window.currentRow)
+# annual_users = annual_users.withColumn("total_users", sum("new_users").over(window_spec))
+#
+# # Step 2: 统计每年有评论的用户数
+# review_users = spark.sql("""
+#     SELECT
+#         YEAR(to_date(date, 'yyyy-MM-dd')) AS review_year,
+#         COUNT(DISTINCT user_id) AS reviewed_users
+#     FROM
+#         review
+#     GROUP BY
+#         YEAR(to_date(date, 'yyyy-MM-dd'))
+#     ORDER BY
+#         review_year
+# """)
+#
+# # Step 3: 合并数据并计算沉默用户数和比例
+# result = annual_users.join(review_users, annual_users.user_year == review_users.review_year, "left") \
+#                      .withColumn("reviewed_users", when(col("reviewed_users").isNull(), lit(0)).otherwise(col("reviewed_users"))) \
+#                      .withColumn("silent_users", col("total_users") - col("reviewed_users")) \
+#                      .withColumn("silent_ratio", col("silent_users") / col("total_users"))
+#
+# # Step 4: 选择需要的列并重命名
+# result = result.select(
+#     col("user_year").alias("year"),
+#     col("total_users"),
+#     col("reviewed_users"),
+#     col("silent_users"),
+#     col("silent_ratio")
+# ).orderBy("year")
+#
+# # 显示结果
+# result.show(truncate=False)
 
 
 
@@ -179,3 +179,18 @@ result.show(truncate=False)
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
 
 #统计不同类型（中国菜、美式、墨西哥）的餐厅的评分分布
+
+review_count_year = spark.sql("""
+    SELECT 
+        YEAR(TO_DATE(date, 'yyyy-MM-dd')) AS year, 
+        COUNT(*) AS review 
+    FROM 
+        default.review 
+    WHERE 
+        YEAR(TO_DATE(date, 'yyyy-MM-dd')) IS NOT NULL 
+    GROUP BY 
+        YEAR(TO_DATE(date, 'yyyy-MM-dd')) 
+    ORDER BY 
+        YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+""")
+review_count_year.show(truncate=False)

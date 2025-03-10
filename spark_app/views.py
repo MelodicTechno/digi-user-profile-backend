@@ -231,35 +231,35 @@ def update_user_statistics(request):
     statistics = analyse.update_users()
 
     # 清空现有数据
-    NewUserEveryYear.objects.all().delete()
-    ReviewCount.objects.all().delete()
-    FanMost.objects.all().delete()
-    UserEveryYear.objects.all().delete()
+    # NewUserEveryYear.objects.all().delete()
+    # ReviewCount.objects.all().delete()
+    # FanMost.objects.all().delete()
+    # UserEveryYear.objects.all().delete()
     ReviewCountYear.objects.all().delete()
-    TotalAndSilent.objects.all().delete()
+    # TotalAndSilent.objects.all().delete()
 
     # 分析每年加入的用户数量
-    for new_user in statistics['new_user_every_year']:
-        NewUserEveryYear.objects.create(
-            year=new_user['year'],
-            user_count=new_user['user_count']
-        )
-
-    # 统计评论达人
-    for review in statistics['review_count']:
-        ReviewCount.objects.create(
-            user_id=review['user_id'],
-            name=review['name'],
-            review_count=review['review_count'],
-        )
-
-    # 统计人气最高的用户（fans）
-    for fans in statistics['fans_most']:
-        FanMost.objects.create(
-            user_id=fans['user_id'],
-            name=fans['name'],
-            fans=fans['fans']
-        )
+    # for new_user in statistics['new_user_every_year']:
+    #     NewUserEveryYear.objects.create(
+    #         year=new_user['year'],
+    #         user_count=new_user['user_count']
+    #     )
+    #
+    # # 统计评论达人
+    # for review in statistics['review_count']:
+    #     ReviewCount.objects.create(
+    #         user_id=review['user_id'],
+    #         name=review['name'],
+    #         review_count=review['review_count'],
+    #     )
+    #
+    # # 统计人气最高的用户（fans）
+    # for fans in statistics['fans_most']:
+    #     FanMost.objects.create(
+    #         user_id=fans['user_id'],
+    #         name=fans['name'],
+    #         fans=fans['fans']
+    #     )
 
     # 每年的新用户数
     # for user in statistics['user_every_year']:
@@ -270,18 +270,19 @@ def update_user_statistics(request):
     # 每年的评论数
     for review_count in statistics['review_count_year']:
         ReviewCountYear.objects.create(
+            year=review_count['year'],
             review=review_count['review']
         )
 
     # 统计每年的总用户数和沉默用户数
-    for tas in statistics['total_and_silent']:
-        TotalAndSilent.objects.create(
-            year=tas['year'],
-            total_users=tas['total_users'],
-            reviewed_users=tas['reviewed_users'],
-            silent_users=tas['silent_users'],
-            silent_ratio=tas['silent_ratio'],
-        )
+    # for tas in statistics['total_and_silent']:
+    #     TotalAndSilent.objects.create(
+    #         year=tas['year'],
+    #         total_users=tas['total_users'],
+    #         reviewed_users=tas['reviewed_users'],
+    #         silent_users=tas['silent_users'],
+    #         silent_ratio=tas['silent_ratio'],
+    #     )
 
     return JsonResponse({"message": "Update user data succeeded"})
 
@@ -317,7 +318,7 @@ def get_statistics(request):
         # 每年的新用户数
         "user_every_year": list(UserEveryYear.objects.all().values('new_user')),
         # 每年的评论数
-        "review_count_year": list(ReviewCountYear.objects.all().values('review')),
+        "review_count_year": list(ReviewCountYear.objects.all().values('review', 'year')),
         # 统计每年的总用户数和沉默用户数
         "total_and_silent": list(TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users', 'silent_ratio')),
     }
@@ -358,7 +359,7 @@ def get_user_statistics(request):
         # 每年的新用户数
         "user_every_year": list(UserEveryYear.objects.all().values('new_user')),
         # 每年的评论数
-        "review_count_year": list(ReviewCountYear.objects.all().values('review')),
+        "review_count_year": list(ReviewCountYear.objects.all().values('review', 'year')),
         # 统计每年的总用户数和沉默用户数
         "total_and_silent": list(
             TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users',

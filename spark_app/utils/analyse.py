@@ -72,10 +72,17 @@ def clean():
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
-        SELECT YEAR(date) AS year, COUNT(*) AS review_count
-        FROM default.review
-        GROUP BY YEAR(date)
-        ORDER BY year
+        SELECT 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) AS year, 
+            COUNT(*) AS review 
+        FROM 
+            default.review 
+        WHERE 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) IS NOT NULL 
+        GROUP BY 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) 
+        ORDER BY 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
     """).collect()
 
     # 商家打卡数排序
@@ -672,8 +679,19 @@ def update_users():
     # user_every_year = spark.sql(
     #     "select count(*) as new_user from default.users group by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) order by YEAR(TO_DATE(yelping_since, '%Y-%m-%d')) DESC")
     # 每年的评论数
-    review_count_year = spark.sql(
-        "select count(*) as review from default.review group by YEAR(TO_DATE(date, '%Y-%m-%d')) order by YEAR(TO_DATE(date, '%Y-%m-%d')) DESC")
+    review_count_year = spark.sql("""
+        SELECT 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) AS year, 
+            COUNT(*) AS review 
+        FROM 
+            default.review 
+        WHERE 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) IS NOT NULL 
+        GROUP BY 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) 
+        ORDER BY 
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+    """)
 
     review_count_year = review_count_year.collect()
     review_count_year = [row.asDict() for row in review_count_year]

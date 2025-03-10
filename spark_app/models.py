@@ -139,6 +139,7 @@ class UserEveryYear(models.Model):
 
 # 每年的评论数
 class ReviewCountYear(models.Model):
+    year = models.IntegerField()
     review = models.IntegerField()
 
     def __str__(self):
