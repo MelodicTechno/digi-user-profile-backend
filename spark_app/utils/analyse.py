@@ -710,15 +710,12 @@ def update_scores():
         .getOrCreate()
 
     # 评分分布（1-5）
-    stars_dist = spark.sql("""
-        SELECT
-            stars.cast('int') AS rating,
-            COUNT(*) AS review_count
-        FROM default.review
-        WHERE stars IS NOT NULL
-        GROUP BY stars.cast('int')
-        ORDER BY rating
-    """).collect()
+    stars_dist = spark.sql(
+        """ SELECT CAST(stars AS INT) AS rating, COUNT(*) AS review_count FROM default.review 
+        WHERE stars IS NOT NULL GROUP BY CAST(stars AS INT) ORDER BY rating """).collect()
+
+
+    stars_dist = [row.asDict() for row in stars_dist]
 
     # 每周各天的评分次数
     review_in_week = spark.sql("""
@@ -740,7 +737,9 @@ def update_scores():
         WHERE weekday_num IS NOT NULL
         GROUP BY weekday_name, weekday_num
         ORDER BY weekday_num
-        """)
+        """).collect()
+
+    review_in_week = [row.asDict() for row in review_in_week]
 
     # 5星评价最多的前5个商家
     top5_businesses = spark.sql("""
@@ -752,7 +751,9 @@ def update_scores():
     GROUP BY business_id
     ORDER BY five_star_count DESC
     LIMIT 5
-    """)
+    """).collect()
+
+    top5_businesses = [row.asDict() for row in top5_businesses]
 
     spark.stop()
 
