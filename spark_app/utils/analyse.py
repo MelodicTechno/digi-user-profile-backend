@@ -778,6 +778,8 @@ def update_review():
         .getOrCreate()
 
     # 第一问
+    from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
+    from pyspark.ml.feature import StopWordsRemover
     hive_df = spark.sql("SELECT * FROM default.review")
     # 将字符串格式的日期转为date格式
     updated_review = hive_df.withColumn("date", to_date(col("date"), "yyyy-MM-dd")) \
@@ -811,6 +813,8 @@ def update_review():
 
     # 从评论中提取最常见的Top20词语
     # 从 Hive 表中读取数据
+    from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
+    from pyspark.ml.feature import StopWordsRemover
     reviews_df = spark.sql("SELECT * FROM review")
 
     # 转换为小写并去除标点符号
@@ -843,7 +847,6 @@ def update_review():
     top_20_words_df = word_counts_df.orderBy(col("count").desc()).limit(20).collect()
     top_20_words = [row.asDict() for row in top_20_words_df]
 
-    '''
     # 从评论中提取正面评论（评分>3）的Top10词语
 
     from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
@@ -889,7 +892,6 @@ def update_review():
 
     # 显示结果
     top_10_words_df.show()
-    '''
 
     # 计算单词的关系图（譬如chinese、steak等单词）
     # 从 Hive 表中读取数据
