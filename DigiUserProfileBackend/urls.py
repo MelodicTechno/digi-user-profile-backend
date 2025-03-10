@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # path('', include('api.urls')),
     path('api/', include('spark_app.urls')),
+    path('api/', include('myapp.urls'))
 ]
