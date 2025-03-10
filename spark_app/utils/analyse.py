@@ -1,5 +1,4 @@
 # analyse.py
-from pyspark import F
 from pyspark.ml.feature import StopWordsRemover
 from pyspark.sql import SparkSession, Window
 from pyspark.sql.functions import (year,
@@ -912,6 +911,7 @@ def update_review():
     # 定义滑动窗口
     window_spec = Window.partitionBy("review_id").orderBy("word_index")
 
+    from pyspark.sql import functions as F
     # 为每个单词添加索引
     reviews_df = reviews_df.withColumn(
         "word_index",
