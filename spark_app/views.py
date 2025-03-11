@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils.business_recommend import *
 from django.core.cache import cache
+from .utils import word_cloud
 from .models import (
     MostCommonShop,
     ShopMostCity,
@@ -531,3 +532,23 @@ def get_checkin_statistics(request):
 
     # 返回JsonResponse
     return JsonResponse(statistics)
+
+# 获取分词后的评论
+@require_http_methods(['GET'])
+def get_word_cloud_data(request):
+    """
+    调用 process_comments 函数处理评论数据，并返回 JSON 格式的结果
+    """
+    try:
+        # 调用 process_comments 函数处理评论数据
+        comments = word_cloud.process_comments()
+
+        # 将结果转换为 JSON 格式
+        result = {
+            "comments": comments
+        }
+
+        return JsonResponse(result)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
