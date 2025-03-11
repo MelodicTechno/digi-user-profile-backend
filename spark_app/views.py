@@ -603,13 +603,15 @@ def update_yearly_statistics(request):
 
         # 将数据保存到数据库中
         for stat in yearly_statistics:
-            YearlyStatistics.objects.create(
+            YearlyStatistics.objects.update_or_create(
                 year=stat['year'],
-                new_users=stat['new_users'],
-                review_count=stat['review_count'],
-                elite_users=stat['elite_users'],
-                tip_count=stat['tip_count'],
-                checkin_count=stat['checkin_count']
+                defaults={
+                    'new_users': stat['new_users'],
+                    'review_count': stat['review_count'],
+                    'elite_users': stat['elite_users'],
+                    'tip_count': stat['tip_count'],
+                    'checkin_count': stat['checkin_count']
+                }
             )
 
         # 返回成功响应
