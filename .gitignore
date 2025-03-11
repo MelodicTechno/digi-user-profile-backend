@@ -89,7 +89,6 @@ local_settings.py
 .env
 db
 
-.idea/
 DigiUserProfileBackend/__pycache__/
 DigiUserProfileBackend/settings.py
 base/__pycache__/
