@@ -617,3 +617,23 @@ def update_yearly_statistics(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+#  获取巨他妈难的那个数据
+@require_http_methods(['GET'])
+def get_yearly_statistics(request):
+    """
+    查询每年的统计数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询每年的统计数据
+        yearly_statistics = list(YearlyStatistics.objects.all().values('year', 'new_users', 'review_count', 'elite_users', 'tip_count', 'checkin_count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "yearly_statistics": yearly_statistics,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
