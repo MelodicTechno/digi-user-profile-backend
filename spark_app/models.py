@@ -184,3 +184,42 @@ class Top5Businesses(models.Model):
 
     def __str__(self):
         return f'business_id: {self.business_id} five_star_count: {self.five_star_count}'
+
+# 评论相关
+class YearReviewCount(models.Model):
+    year = models.IntegerField()
+    review_counts = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.year}: {self.review_counts} reviews"
+
+class UserReviewCount(models.Model):
+    user_id = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
+    review_counts = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} ({self.user_id}): {self.review_counts} reviews"
+
+
+class TopWord(models.Model):
+    word = models.CharField(max_length=255)
+    count = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.word}: {self.count} occurrences"
+
+class GraphNode(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+
+class GraphEdge(models.Model):
+    source = models.ForeignKey(GraphNode, related_name='source_node', on_delete=models.CASCADE)
+    target = models.ForeignKey(GraphNode, related_name='target_node', on_delete=models.CASCADE)
+    value = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.source.name} -> {self.target.name}: {self.value}"

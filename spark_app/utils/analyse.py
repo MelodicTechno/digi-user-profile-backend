@@ -1,8 +1,11 @@
 # analyse.py
+from pyspark.ml.feature import StopWordsRemover
 from pyspark.sql import SparkSession, Window
-from pyspark.sql.functions import explode, split, col, to_timestamp, year, hour
-from pyspark.sql.functions import col, regexp_replace, split, expr, explode, lit, year, to_date, sequence, array_contains, sum, count, when, round  # 增加round导入
-
+from pyspark.sql.functions import (year,
+                                   to_date,
+                                   col, regexp_replace, split, explode, expr, lit, sequence,
+                                   sum, count, when, round, to_timestamp, lower,
+                                   hour, size)
 
 def clean():
 
@@ -431,11 +434,20 @@ def update_business():
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
-            SELECT YEAR(date) AS year, COUNT(*) AS review_count
-            FROM default.review
-            GROUP BY YEAR(date)
-            ORDER BY year
-        """).collect()
+        SELECT
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) AS year,
+            COUNT(*) AS review_count
+        FROM
+            default.review
+        WHERE
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) IS NOT NULL
+        GROUP BY
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+        ORDER BY
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+    """).collect()
+    review_in_year = [row.asDict() for row in review_in_year]
+
 
     # 商家打卡数排序
     checkin_df = spark.sql("SELECT * FROM default.checkin")
@@ -443,7 +455,7 @@ def update_business():
         "checkin_time",
         explode(split(col("date"), ",\s*"))
     ).select("business_id", "checkin_time")
-
+    #
     business_df = spark.sql("SELECT business_id, name, city FROM default.business")
     joined_business = exploded_checkin.join(
         business_df,
@@ -462,17 +474,39 @@ def update_business():
     business_ranking = [row.asDict() for row in business_ranking]  # 将 Row 对象转换为字典
 
     # 最喜欢打卡的城市
-    joined_df = exploded_checkin.join(
-        business_df,
-        "business_id",
-        "inner"
-    )
-    city_ranking = joined_df.groupBy("city") \
+    # joined_df = exploded_checkin.join(
+    #     business_df,
+    #     "business_id",
+    #     "inner"
+    # )
+    # city_ranking = joined_df.groupBy("city") \
+    #     .count() \
+    #     .withColumnRenamed("count", "total_checkins") \
+    #     .orderBy(col("total_checkins").desc()).collect()
+    # 修改
+    # city_ranking = [row.asDict() for row in city_ranking]
+
+    # ---------------------------------优化
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
+
+    exploded_checkin = checkin_df.withColumn(
+        "checkin_time",
+        explode(split(col("date"), ",\s*"))
+    ).select("business_id", "checkin_time")
+
+    joined_df = exploded_checkin.join(business_df, "business_id", "inner")
+
+    city_ranking_df = joined_df.groupBy("city") \
         .count() \
         .withColumnRenamed("count", "total_checkins") \
-        .orderBy(col("total_checkins").desc()).collect()
-    # 修改
+        .orderBy(col("total_checkins").desc())
+
+    city_ranking = city_ranking_df.collect()
     city_ranking = [row.asDict() for row in city_ranking]
+
+    # ------------------优化
+
 
     # 每小时打卡数统计
     hive_df = spark.sql("SELECT * FROM default.checkin")
@@ -485,14 +519,19 @@ def update_business():
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
     processed_df = processed_df.withColumn("hour", hour(col("datetime")))
-    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour")
+    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour").collect()
+    hourly_counts = [row.asDict() for row in hourly_counts]
+
+
 
     # 每年打卡数统计
     processed_df = exploded_df.withColumn(
         "datetime",
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
-    yearly_counts = processed_df.groupBy("year").count().orderBy("year")
+    yearly_counts = processed_df.groupBy("year").count().orderBy("year").collect()
+    yearly_counts = [row.asDict() for row in yearly_counts]
+
 
     # 精英用户比
     user_df = spark.sql("SELECT * FROM default.users")
@@ -537,7 +576,8 @@ def update_business():
                     )
         .orderBy("year")
         .select("year", "ratio")
-    )
+    ).collect()
+    elite_user_percent = [row.asDict() for row in elite_user_percent]
 
     spark.stop()
 
@@ -744,11 +784,13 @@ def update_scores():
     # 5星评价最多的前5个商家
     top5_businesses = spark.sql("""
     SELECT 
-        business_id, 
+        b.name as name,
+        r.business_id as business_id, 
         COUNT(*) AS five_star_count
-    FROM default.review
-    WHERE CAST(stars AS INT) = 5 AND stars IS NOT NULL
-    GROUP BY business_id
+    FROM default.review r
+    JOIN default.business b ON r.business_id = b.business_id
+    WHERE CAST(r.stars AS INT) = 5 AND r.stars IS NOT NULL
+    GROUP BY r.business_id, b.name
     ORDER BY five_star_count DESC
     LIMIT 5
     """).collect()
@@ -761,4 +803,209 @@ def update_scores():
         'stars_dist': stars_dist,
         'review_in_week': review_in_week,
         'top5_businesses': top5_businesses,
+    }
+
+
+# 评论分析更新
+def update_review():
+    spark = SparkSession.builder \
+        .appName("HiveExample") \
+        .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
+        .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+        .enableHiveSupport() \
+        .getOrCreate()
+
+    # 第一问
+    from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
+    from pyspark.ml.feature import StopWordsRemover
+    hive_df = spark.sql("SELECT * FROM default.review")
+    # 将字符串格式的日期转为date格式
+    updated_review = hive_df.withColumn("date", to_date(col("date"), "yyyy-MM-dd")) \
+        .withColumn("year", year(col("date")))
+
+    # 将 updated_review 注册为临时视图
+    updated_review.createOrReplaceTempView("updated_review")
+
+    # 统计每年的评论数
+    year_review_counts = spark.sql("select year, count(*) as review_counts from updated_review group by year").collect()
+    year_review_counts = [row.asDict() for row in year_review_counts]
+
+    # 统计有用（helpful）、有趣（funny）及酷（cool）的评论及数量
+    # 有用
+    useful_comments = spark.sql("select count(*) from updated_review where useful > 0").collect()
+    # 有趣
+    funny_comments = spark.sql("select count(*) from updated_review where funny > 0").collect()
+    # 酷
+    cool_comments = spark.sql("select count(*) from updated_review where cool > 0").collect()
+
+    useful_comments = [row.asDict() for row in useful_comments]
+    funny_comments = [row.asDict() for row in funny_comments]
+    cool_comments = [row.asDict() for row in cool_comments]
+
+    # 每年全部评论用户排行榜
+    user_review_counts = spark.sql(
+        "select review.user_id , users.name,count(*) as review_counts from users,review "
+        "where review.user_id = users.user_id group by review.user_id ,users.name order by review_counts desc").collect()
+    user_review_counts = [row.asDict() for row in user_review_counts]
+
+    # 从评论中提取最常见的Top20词语
+    # 从 Hive 表中读取数据
+    from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
+    from pyspark.ml.feature import StopWordsRemover
+    reviews_df = spark.sql("SELECT * FROM review")
+
+    # 转换为小写并去除标点符号
+    reviews_df = reviews_df.withColumn(
+        "cleaned_text",
+        regexp_replace(lower(col("text")), "[^a-zA-Z\\s]", "")  # 去除非字母字符
+    )
+
+    # 分词
+    reviews_df = reviews_df.withColumn(
+        "words",
+        split(col("cleaned_text"), "\\s+")  # 按空格分词
+    )
+
+    # 过滤掉 words 列为 null 或空列表的行
+    reviews_df = reviews_df.filter(col("words").isNotNull() & (size(col("words")) > 0))
+
+    # 去除停用词
+    stop_words = StopWordsRemover.loadDefaultStopWords("english")  # 加载英文停用词
+    stop_words_remover = StopWordsRemover(inputCol="words", outputCol="filtered_words", stopWords=stop_words)
+    reviews_df = stop_words_remover.transform(reviews_df)
+
+    # 展开词语
+    words_df = reviews_df.select(explode(col("filtered_words")).alias("word"))
+
+    # 统计词频
+    word_counts_df = words_df.groupBy("word").count()
+
+    # 按词频排序并提取 Top 20
+    top_20_words_df = word_counts_df.orderBy(col("count").desc()).limit(20).collect()
+    top_20_words = [row.asDict() for row in top_20_words_df]
+
+    # 从评论中提取正面评论（评分>3）的Top10词语
+
+    from pyspark.sql.functions import col, regexp_replace, lower, split, explode, size
+    from pyspark.ml.feature import StopWordsRemover
+
+    # 提取正面评论
+    positive_reviews_df = spark.sql("SELECT * FROM review WHERE stars >= 3.0")
+
+    # 转换为小写并去除标点符号
+    positive_reviews_df = positive_reviews_df.withColumn(
+        "cleaned_text",
+        regexp_replace(lower(col("text")), "[^a-zA-Z\\s]", "")  # 去除非字母字符
+    )
+
+    # 分词
+    positive_reviews_df = positive_reviews_df.withColumn(
+        "words",
+        split(col("cleaned_text"), "\\s+")  # 按空格分词
+    )
+
+    # 过滤掉 words 列为 null 或空列表的行
+    positive_reviews_df = positive_reviews_df.filter(col("words").isNotNull() & (size(col("words")) > 0))
+
+    # 去除停用词
+    stop_words = StopWordsRemover.loadDefaultStopWords("english")  # 加载英文停用词
+    stop_words_remover = StopWordsRemover(inputCol="words", outputCol="filtered_words", stopWords=stop_words)
+    positive_reviews_df = stop_words_remover.transform(positive_reviews_df)
+
+    # 过滤掉空字符串
+    positive_reviews_df = positive_reviews_df.withColumn(
+        "filtered_words",
+        expr("filter(filtered_words, word -> word != '')")  # 过滤掉空字符串
+    )
+
+    # 展开词语
+    words_df = positive_reviews_df.select(explode(col("filtered_words")).alias("word"))
+
+    # 统计词频
+    word_counts_df = words_df.groupBy("word").count()
+
+    # 按词频排序并提取 Top 10
+    top_10_words_df = word_counts_df.orderBy(col("count").desc()).limit(10).collect()
+    top_10_words = [row.asDict() for row in top_20_words_df]
+
+
+    # 计算单词的关系图（譬如chinese、steak等单词）
+    # 从 Hive 表中读取数据
+    reviews_df = spark.sql("SELECT * FROM review")
+
+    # 转换为小写并去除标点符号
+    reviews_df = reviews_df.withColumn(
+        "cleaned_text",
+        regexp_replace(lower(col("text")), "[^a-zA-Z\\s]", "")
+    )
+
+    # 分词
+    reviews_df = reviews_df.withColumn(
+        "words",
+        split(col("cleaned_text"), "\\s+")
+    )
+
+    # 定义滑动窗口
+    window_spec = Window.partitionBy("review_id").orderBy("word_index")
+
+    from pyspark.sql import functions as F
+    # 为每个单词添加索引
+    reviews_df = reviews_df.withColumn(
+        "word_index",
+        F.row_number().over(window_spec)
+    )
+
+    # 提取单词对
+    word_pairs_df = reviews_df.withColumn(
+        "word_pairs",
+        F.expr("""
+            transform(
+                sequence(1, size(words) - 1),
+                i -> array(words[i - 1], words[i])
+            )
+        """)
+    ).select(explode("word_pairs").alias("word_pair"))
+
+    # 过滤掉无效单词对
+    word_pairs_df = word_pairs_df.filter(
+        (col("word_pair")[0] != "") & (col("word_pair")[1] != "")
+    )
+
+    # 统计共现频率
+    co_occurrence_df = word_pairs_df.groupBy("word_pair").count()
+
+    # 过滤掉低频共现对
+    co_occurrence_df = co_occurrence_df.filter(col("count") > 5)
+
+
+    nodes = []
+    edges = []
+
+    # 添加边和权重
+    for row in co_occurrence_df.collect():
+        word1, word2 = row["word_pair"]
+        count = row["count"]
+
+        # 添加节点
+        if word1 not in nodes:
+            nodes.append({"name": word1})
+        if word2 not in nodes:
+            nodes.append({"name": word2})
+
+        edges.append({"source": word1, "target": word2, "value": count})
+
+    # 转换为 JSON 格式
+    graph_data = {
+        "nodes": nodes,
+        "edges": edges
+    }
+
+    spark.stop()
+
+    return {
+        'year_review_counts': year_review_counts,
+        'user_review_counts': user_review_counts,
+        'top_20_words': top_20_words,
+        'top_10_words': top_10_words,
+        'graph_data': graph_data,
     }
