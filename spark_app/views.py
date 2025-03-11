@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils.business_recommend import *
 from django.core.cache import cache
+from .utils import word_cloud
 from .models import (
     MostCommonShop,
     ShopMostCity,
@@ -22,10 +23,10 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge,
+    GraphNode, GraphEdge, WordFrequency,
 )
-from .utils.analyse import update_review
-
+from .utils.analyse import update_review, update_checkin
+from .utils.word_cloud import process_comments
 
 
 # 初始化和统计
@@ -475,3 +476,114 @@ def get_review_statistics(request):
     }
 
     return JsonResponse(statistics)
+
+@require_http_methods(['GET'])
+def update_checkin_statistics(request):
+
+    # 获取数据
+    try:
+        statistics = update_checkin()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update review data: {str(e)}"}, status=500)
+
+    # 删表
+    BusinessCheckinRanking.objects.all().delete()
+    CityCheckinRanking.objects.all().delete()
+    CheckinPerHour.objects.all().delete()
+    CheckinPerYear.objects.all().delete()
+
+    # 插值
+    for ranking in statistics['business_checkin_ranking']:
+        BusinessCheckinRanking.objects.create(
+            name=ranking['name'],
+            city=ranking['city'],
+            total_checkins=ranking['total_checkins']
+        )
+
+    for ranking in statistics['city_checkin_ranking']:
+        CityCheckinRanking.objects.create(
+            city=ranking['city'],
+            total_checkins=ranking['total_checkins']
+        )
+
+    for count in statistics['checkin_per_hour']:
+        CheckinPerHour.objects.create(
+            hour=count['hour'],
+            checkin_count=count['count']
+        )
+
+    for count in statistics['checkin_per_year']:
+        CheckinPerYear.objects.create(
+            year=count['year'],
+            checkin_count=count['count']
+        )
+
+    # 返回
+    return JsonResponse({"message": "Update checkin data succeeded"})
+
+@require_http_methods(['GET'])
+def get_checkin_statistics(request):
+    # 返回值
+    statistics = {
+        "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins'))[
+                                    :10],
+        "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
+        "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
+        "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
+    }
+
+    # 返回JsonResponse
+    return JsonResponse(statistics)
+
+# 获取词频
+@require_http_methods(['GET'])
+def get_wordcloud_data(request):
+    """
+    查询分词数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询分词数据
+        word_frequencies = list(WordFrequency.objects.all().values('word', 'count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "word_frequencies": word_frequencies,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# 更新词云数据
+@require_http_methods(['GET'])
+def update_wordcloud_data(request):
+    """
+    调用 process_comments 函数处理评论数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 process_comments 函数处理评论数据
+        comments = process_comments()
+
+        # 统计单词频率
+        word_frequency = {}
+        for comment in comments:
+            for word in comment:
+                if word in word_frequency:
+                    word_frequency[word] += 1
+                else:
+                    word_frequency[word] = 1
+
+        # 清空现有数据
+        WordFrequency.objects.all().delete()
+
+        # 将单词频率存储到数据库中
+        for word, count in word_frequency.items():
+            WordFrequency.objects.create(word=word, count=count)
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)

@@ -120,3 +120,4 @@ Thumbs.db
 db.sqlite3
 
 api/__pycache__/
+model/
