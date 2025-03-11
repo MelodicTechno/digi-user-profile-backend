@@ -45,11 +45,14 @@ def process_comments():
     result = []
 
     for comment in comments_pd['text']:
-        # 分词
-        tokens = word_tokenize(comment)
-
-        # 将结果添加到列表
-        result.append(tokens)
+        # 检查评论是否为字符串
+        if isinstance(comment, str):
+            # 分词
+            tokens = word_tokenize(comment)
+            # 将结果添加到列表
+            result.append(tokens)
+        else:
+            print(f"Skipping non-string comment: {comment}")
 
     # 停止 SparkSession
     spark.stop()
