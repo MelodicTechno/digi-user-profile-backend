@@ -3,8 +3,7 @@
 """
 from pyspark.sql.functions import (year,
                                    col, split, explode, count, to_timestamp, countDistinct)
-
-from setup import create_spark
+from .setup import create_spark
 
 
 def get_deep():

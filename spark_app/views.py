@@ -23,9 +23,10 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge, WordFrequency,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.user_mission import get_deep
 from .utils.word_cloud import process_comments
 
 
@@ -581,6 +582,35 @@ def update_wordcloud_data(request):
         # 将单词频率存储到数据库中
         for word, count in word_frequency.items():
             WordFrequency.objects.create(word=word, count=count)
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def update_yearly_statistics(request):
+    """
+    调用 get_deep 函数处理每年的统计数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_deep 函数处理数据
+        yearly_statistics = get_deep()
+
+        # 清空现有数据
+        YearlyStatistics.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for stat in yearly_statistics:
+            YearlyStatistics.objects.create(
+                year=stat['year'],
+                new_users=stat['new_users'],
+                review_count=stat['review_count'],
+                elite_users=stat['elite_users'],
+                tip_count=stat['tip_count'],
+                checkin_count=stat['checkin_count']
+            )
 
         # 返回成功响应
         return JsonResponse({"status": "success"})
