@@ -23,9 +23,10 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge,
+    GraphNode, GraphEdge, WordFrequency,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.word_cloud import process_comments
 
 
 # 初始化和统计
@@ -533,22 +534,55 @@ def get_checkin_statistics(request):
     # 返回JsonResponse
     return JsonResponse(statistics)
 
-# 获取分词后的评论
+# 获取词频
 @require_http_methods(['GET'])
-def get_word_cloud_data(request):
+def get_wordcloud_data(request):
     """
-    调用 process_comments 函数处理评论数据，并返回 JSON 格式的结果
+    查询分词数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询分词数据
+        word_frequencies = list(WordFrequency.objects.all().values('word', 'count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "word_frequencies": word_frequencies,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# 更新词云数据
+@require_http_methods(['GET'])
+def update_wordcloud_data(request):
+    """
+    调用 process_comments 函数处理评论数据，并将结果存储到数据库中
     """
     try:
         # 调用 process_comments 函数处理评论数据
-        comments = word_cloud.process_comments()
+        comments = process_comments()
 
-        # 将结果转换为 JSON 格式
-        result = {
-            "comments": comments
-        }
+        # 统计单词频率
+        word_frequency = {}
+        for comment in comments:
+            for word in comment:
+                if word in word_frequency:
+                    word_frequency[word] += 1
+                else:
+                    word_frequency[word] = 1
 
-        return JsonResponse(result)
+        # 清空现有数据
+        WordFrequency.objects.all().delete()
+
+        # 将单词频率存储到数据库中
+        for word, count in word_frequency.items():
+            WordFrequency.objects.create(word=word, count=count)
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)

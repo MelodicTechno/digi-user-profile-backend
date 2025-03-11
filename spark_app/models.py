@@ -226,7 +226,7 @@ class GraphEdge(models.Model):
 
 # 统计词频的模型 用来画词云图
 class WordFrequency(models.Model):
-    word = models.CharField(max_length=255)
+    word = models.CharField(max_length=255, default='cool')
     count = models.IntegerField()
 
     def __str__(self):
