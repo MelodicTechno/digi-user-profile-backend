@@ -61,7 +61,7 @@ user_review_counts.show(truncate=False)
 '''
 
 
-'''
+"""
 #从评论中提取最常见的Top20词语
 # 从 Hive 表中读取数据
 reviews_df = spark.sql("SELECT * FROM review")
@@ -97,7 +97,7 @@ top_20_words_df = word_counts_df.orderBy(col("count").desc()).limit(20)
 
 # 显示结果
 top_20_words_df.show()
-'''
+"""
 
 
 '''
@@ -317,11 +317,13 @@ co_occurrence_df = co_occurrence_df.filter(col("count") > 5)
 # 创建图
 G = nx.Graph()
 
+
 # 添加边和权重
 for row in co_occurrence_df.collect():
     word1, word2 = row["word_pair"]
     count = row["count"]
     G.add_edge(word1, word2, weight=count)
+
 
 # 设置图形布局
 pos = nx.spring_layout(G, k=0.15, iterations=20)

@@ -20,8 +20,12 @@ from .models import (
     FanMost,
     UserEveryYear,
     ReviewCountYear,
-    TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses,
+    TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
+    GraphNode, GraphEdge,
 )
+from .utils.analyse import update_review
+
+
 # 初始化和统计
 @require_http_methods(['GET'])
 def for_test(request):
@@ -384,3 +388,74 @@ def filter_businesses(request):
 def get_review_recommendations(request, user_id):
     # 实现推荐逻辑
     return JsonResponse({"message": "Review recommendations"})
+
+# methods for updating the statistics of the reviews
+@require_http_methods(['GET'])
+def update_review_statistics(request):
+    # 更新数据
+    try:
+        statistics = update_review()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update review data: {str(e)}"}, status=500)
+
+    # 清空现有数据
+    YearReviewCount.objects.all().delete()
+    UserReviewCount.objects.all().delete()
+    TopWord.objects.all().delete()
+    GraphNode.objects.all().delete()
+    GraphEdge.objects.all().delete()
+
+    # 年度评论统计
+    for year_review in statistics['year_review_counts']:
+        YearReviewCount.objects.create(
+            year=year_review['year'],
+            review_counts=year_review['review_counts']
+        )
+
+    # 用户评论统计
+    for user_review in statistics['user_review_counts']:
+        UserReviewCount.objects.create(
+            user_id=user_review['user_id'],
+            name=user_review['name'],
+            review_counts=user_review['review_counts']
+        )
+
+    # 评论高频词
+    for top_word in statistics['top_20_words']:
+        TopWord.objects.create(
+            word=top_word['word'],
+            count=top_word['count']
+        )
+
+    # 评论关系图
+    for node in statistics['graph_data']['nodes']:
+        GraphNode.objects.create(
+            name=node['name']
+        )
+
+    for edge in statistics['graph_data']['edges']:
+        source_node, _ = GraphNode.objects.get_or_create(name=edge['source'])
+        target_node, _ = GraphNode.objects.get_or_create(name=edge['target'])
+        GraphEdge.objects.create(
+            source=source_node,
+            target=target_node,
+            value=edge['value']
+        )
+
+    return JsonResponse({"message": "Update review data succeeded"})
+
+
+# method for getting the data of reviews
+@require_http_methods(['GET'])
+def get_review_statistics(request):
+    statistics = {
+        "year_review_counts": list(YearReviewCount.objects.all().values('year', 'review_counts')),
+        "user_review_counts": list(UserReviewCount.objects.all().values('user_id', 'name', 'review_counts')),
+        "top_20_words": list(TopWord.objects.all().values('word', 'count')),
+        "graph_data": {
+            "nodes": list(GraphNode.objects.all().values('name')),
+            "edges": list(GraphEdge.objects.all().values('source__name', 'target__name', 'value')),
+        },
+    }
+
+    return JsonResponse(statistics)
