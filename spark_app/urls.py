@@ -36,5 +36,5 @@ urlpatterns = [
     path('recommendations/reviews/<int:user_id>/', get_review_recommendations, name='get_review_recommendations'),
     path('update_wordcloud_data/', update_wordcloud_data, name='get_word_cloud_data'),
     path('get_wordcloud_data/', get_wordcloud_data, name='get_word_cloud_data'),
-    path('update-yearly-statistics/', update_yearly_statistics, name='update_yearly_statistics'),
+    path('update_yearly_statistics/', update_yearly_statistics, name='update_yearly_statistics'),
 ]
