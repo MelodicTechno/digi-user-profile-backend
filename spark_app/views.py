@@ -1,7 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
-
+from .utils.business_recommend import *
+from django.core.cache import cache
 from .models import (
     MostCommonShop,
     ShopMostCity,
@@ -24,6 +25,7 @@ from .models import (
     GraphNode, GraphEdge,
 )
 from .utils.analyse import update_review
+
 
 
 # 初始化和统计
@@ -373,6 +375,15 @@ def list_nearby_businesses(request, latitude, longitude):
 
 @require_http_methods(['GET'])
 def get_business_details(request, business_id):
+    spark = get_spark_session()
+    register_haversine_udf()
+    competitors = find_competitors(business_id)
+    attr_stats, most_common_price = calculate_attribute_distribution(competitors)
+    target_df = spark.sql(f"SELECT attributes FROM business WHERE business_id = '{business_id}'")
+    target_attrs = enhanced_parse_attributes(target_df.first()[0])
+    comparison_dict = create_comparison_dict(attr_stats, most_common_price, target_attrs)
+    spark.stop()
+    return JsonResponse(comparison_dict)
     # 实现详情逻辑
     return JsonResponse({"message": "Business details"})
 
