@@ -431,11 +431,20 @@ def update_business():
 
     # 统计每年的评论数
     review_in_year = spark.sql("""
-            SELECT YEAR(date) AS year, COUNT(*) AS review_count
-            FROM default.review
-            GROUP BY YEAR(date)
-            ORDER BY year
-        """).collect()
+        SELECT
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) AS year,
+            COUNT(*) AS review_count
+        FROM
+            default.review
+        WHERE
+            YEAR(TO_DATE(date, 'yyyy-MM-dd')) IS NOT NULL
+        GROUP BY
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+        ORDER BY
+            YEAR(TO_DATE(date, 'yyyy-MM-dd'))
+    """).collect()
+    review_in_year = [row.asDict() for row in review_in_year]
+
 
     # 商家打卡数排序
     checkin_df = spark.sql("SELECT * FROM default.checkin")
@@ -443,7 +452,7 @@ def update_business():
         "checkin_time",
         explode(split(col("date"), ",\s*"))
     ).select("business_id", "checkin_time")
-
+    #
     business_df = spark.sql("SELECT business_id, name, city FROM default.business")
     joined_business = exploded_checkin.join(
         business_df,
@@ -462,17 +471,39 @@ def update_business():
     business_ranking = [row.asDict() for row in business_ranking]  # 将 Row 对象转换为字典
 
     # 最喜欢打卡的城市
-    joined_df = exploded_checkin.join(
-        business_df,
-        "business_id",
-        "inner"
-    )
-    city_ranking = joined_df.groupBy("city") \
+    # joined_df = exploded_checkin.join(
+    #     business_df,
+    #     "business_id",
+    #     "inner"
+    # )
+    # city_ranking = joined_df.groupBy("city") \
+    #     .count() \
+    #     .withColumnRenamed("count", "total_checkins") \
+    #     .orderBy(col("total_checkins").desc()).collect()
+    # 修改
+    # city_ranking = [row.asDict() for row in city_ranking]
+
+    # ---------------------------------优化
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
+
+    exploded_checkin = checkin_df.withColumn(
+        "checkin_time",
+        explode(split(col("date"), ",\s*"))
+    ).select("business_id", "checkin_time")
+
+    joined_df = exploded_checkin.join(business_df, "business_id", "inner")
+
+    city_ranking_df = joined_df.groupBy("city") \
         .count() \
         .withColumnRenamed("count", "total_checkins") \
-        .orderBy(col("total_checkins").desc()).collect()
-    # 修改
+        .orderBy(col("total_checkins").desc())
+
+    city_ranking = city_ranking_df.collect()
     city_ranking = [row.asDict() for row in city_ranking]
+
+    # ------------------优化
+
 
     # 每小时打卡数统计
     hive_df = spark.sql("SELECT * FROM default.checkin")
@@ -485,14 +516,19 @@ def update_business():
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
     processed_df = processed_df.withColumn("hour", hour(col("datetime")))
-    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour")
+    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour").collect()
+    hourly_counts = [row.asDict() for row in hourly_counts]
+
+
 
     # 每年打卡数统计
     processed_df = exploded_df.withColumn(
         "datetime",
         to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
     ).withColumn("year", year(col("datetime")))
-    yearly_counts = processed_df.groupBy("year").count().orderBy("year")
+    yearly_counts = processed_df.groupBy("year").count().orderBy("year").collect()
+    yearly_counts = [row.asDict() for row in yearly_counts]
+
 
     # 精英用户比
     user_df = spark.sql("SELECT * FROM default.users")
@@ -537,7 +573,8 @@ def update_business():
                     )
         .orderBy("year")
         .select("year", "ratio")
-    )
+    ).collect()
+    elite_user_percent = [row.asDict() for row in elite_user_percent]
 
     spark.stop()
 
@@ -744,11 +781,13 @@ def update_scores():
     # 5星评价最多的前5个商家
     top5_businesses = spark.sql("""
     SELECT 
-        business_id, 
+        b.name as name,
+        r.business_id as business_id, 
         COUNT(*) AS five_star_count
-    FROM default.review
-    WHERE CAST(stars AS INT) = 5 AND stars IS NOT NULL
-    GROUP BY business_id
+    FROM default.review r
+    JOIN default.business b ON r.business_id = b.business_id
+    WHERE CAST(r.stars AS INT) = 5 AND r.stars IS NOT NULL
+    GROUP BY r.business_id, b.name
     ORDER BY five_star_count DESC
     LIMIT 5
     """).collect()

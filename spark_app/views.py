@@ -122,7 +122,10 @@ def update_business_statistics(request):
         MostStars.objects.create(business_id=stars[0], business_name=stars[1], five_stars_counts=stars[2])
 
     for review in statistics['review_in_year']:
-        ReviewInYear.objects.create(year=review[0], review_count=review[1])
+        ReviewInYear.objects.create(
+            year=review['year'],
+            review_count=review['review_count'],
+        )
 
     for ranking in statistics['business_checkin_ranking']:
         BusinessCheckinRanking.objects.create(
@@ -256,6 +259,7 @@ def update_score_statistics(request):
     for business in statistics['top5_businesses']:
         Top5Businesses.objects.create(
             business_id=business['business_id'],
+            name=business['name'],
             five_star_count=business['five_star_count']
         )
 
@@ -352,7 +356,7 @@ def get_score_statistics(request):
         # 每周各天的评分次数
         "review_in_week": list(ReviewInWeek.objects.all().values('weekday_name', 'review_count')),
         # 5星评价最多的前5个商家
-        "top5_businesses": list(Top5Businesses.objects.all().values('business_id', 'five_star_count')),
+        "top5_businesses": list(Top5Businesses.objects.all().values('name', 'five_star_count')),
     }
 
     return JsonResponse(statistics)
