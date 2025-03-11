@@ -579,6 +579,39 @@ def update_business():
     ).collect()
     elite_user_percent = [row.asDict() for row in elite_user_percent]
 
+
+    updated_df = hive_df.withColumn(
+        "isChinese",
+        when(col("categories").contains("Chinese"), 1).otherwise(0)
+    ).withColumn(
+        "isAmerican",
+        when(col("categories").contains("American"), 1).otherwise(0)
+    ).withColumn(
+        "isMexican",
+        when(col("categories").contains("Mexican"), 1).otherwise(0)
+    )
+
+    # 将 updated_df 注册为临时视图
+    updated_df.createOrReplaceTempView("updated_df")
+    updated_df.write.mode("overwrite").saveAsTable("default.business_with_types")
+
+
+    result_df_C = spark.sql("SELECT count(*) FROM updated_df group by isChinese")
+    result_df_A = spark.sql("SELECT count(*) FROM updated_df group by isAmerican")
+    result_df_M = spark.sql("SELECT count(*) FROM updated_df group by isMexican")
+
+    #统计不同类型（中国菜、美式、墨西哥）的餐厅的评论数量
+    Chinese_review_count = spark.sql("select name , review_count from updated_df where isChinese = 1 limit 10")
+    American_review_count = spark.sql("select name , review_count from updated_df where isAmerican = 1 limit 10")
+    Mexico_review_count = spark.sql("select name , review_count from updated_df where isMexican = 1 limit 10")
+
+
+    #统计不同类型（中国菜、美式、墨西哥）的餐厅的评分分布
+    Chinese_review_stars = spark.sql("select name , stars from updated_df where isChinese = 1 limit 10")
+    American_review_stars = spark.sql("select name , stars from updated_df where isAmerican = 1 limit 10")
+    Mexico_review_stars = spark.sql("select name , stars from updated_df where isMexican = 1 limit 10")
+
+
     spark.stop()
 
     # 返回得到的商户统计数据

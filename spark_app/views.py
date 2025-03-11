@@ -329,7 +329,6 @@ def get_business_statistics(request):
         "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
-        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
@@ -352,6 +351,7 @@ def get_user_statistics(request):
         "total_and_silent": list(
             TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users',
                                                 'silent_ratio')),
+        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
