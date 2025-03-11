@@ -517,3 +517,17 @@ def update_checkin_statistics(request):
 
     # 返回
     return JsonResponse({"message": "Update checkin data succeeded"})
+
+@require_http_methods(['GET'])
+def get_checkin_statistics(request):
+    # 返回值
+    statistics = {
+        "business_checkin_ranking": list(BusinessCheckinRanking.objects.all().values('name', 'city', 'total_checkins'))[
+                                    :10],
+        "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
+        "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
+        "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
+    }
+
+    # 返回JsonResponse
+    return JsonResponse(statistics)
