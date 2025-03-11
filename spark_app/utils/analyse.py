@@ -1009,3 +1009,101 @@ def update_review():
         'top_10_words': top_10_words,
         'graph_data': graph_data,
     }
+
+def update_checkout():
+
+    spark = SparkSession.builder \
+        .appName("HiveExample") \
+        .config("spark.sql.warehouse.dir", "user/hive/warehouse") \
+        .config("hive.metastore.uris", "thrift://192.168.100.235:9083") \
+        .enableHiveSupport() \
+        .getOrCreate()
+
+    # 商家打卡数排序
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    exploded_checkin = checkin_df.withColumn(
+        "checkin_time",
+        explode(split(col("date"), ",\s*"))
+    ).select("business_id", "checkin_time")
+    #
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
+    joined_business = exploded_checkin.join(
+        business_df,
+        "business_id",
+        "inner"
+    )
+
+    business_ranking_df = joined_business.groupBy("business_id", "name", "city") \
+        .count() \
+        .withColumnRenamed("count", "total_checkins") \
+        .orderBy(col("total_checkins").desc()) \
+        .select("name", "city", "total_checkins")
+
+    # 将结果收集到 Python 列表中，并将每一行转换为字典
+    business_ranking = business_ranking_df.collect()
+    business_ranking = [row.asDict() for row in business_ranking]  # 将 Row 对象转换为字典
+
+    # 最喜欢打卡的城市
+    # joined_df = exploded_checkin.join(
+    #     business_df,
+    #     "business_id",
+    #     "inner"
+    # )
+    # city_ranking = joined_df.groupBy("city") \
+    #     .count() \
+    #     .withColumnRenamed("count", "total_checkins") \
+    #     .orderBy(col("total_checkins").desc()).collect()
+    # 修改
+    # city_ranking = [row.asDict() for row in city_ranking]
+
+    # ---------------------------------优化
+    checkin_df = spark.sql("SELECT * FROM default.checkin")
+    business_df = spark.sql("SELECT business_id, name, city FROM default.business")
+
+    exploded_checkin = checkin_df.withColumn(
+        "checkin_time",
+        explode(split(col("date"), ",\s*"))
+    ).select("business_id", "checkin_time")
+
+    joined_df = exploded_checkin.join(business_df, "business_id", "inner")
+
+    city_ranking_df = joined_df.groupBy("city") \
+        .count() \
+        .withColumnRenamed("count", "total_checkins") \
+        .orderBy(col("total_checkins").desc())
+
+    city_ranking = city_ranking_df.collect()
+    city_ranking = [row.asDict() for row in city_ranking]
+
+    # ------------------优化
+
+    # 每小时打卡数统计
+    hive_df = spark.sql("SELECT * FROM default.checkin")
+    exploded_df = hive_df.select(
+        "business_id",
+        explode(split(col("date"), ", ")).alias("datetime_str")
+    )
+    processed_df = exploded_df.withColumn(
+        "datetime",
+        to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
+    ).withColumn("year", year(col("datetime")))
+    processed_df = processed_df.withColumn("hour", hour(col("datetime")))
+    hourly_counts = processed_df.groupBy("hour").count().orderBy("hour").collect()
+    hourly_counts = [row.asDict() for row in hourly_counts]
+
+    # 每年打卡数统计
+    processed_df = exploded_df.withColumn(
+        "datetime",
+        to_timestamp(col("datetime_str"), "yyyy-MM-dd HH:mm:ss")
+    ).withColumn("year", year(col("datetime")))
+    yearly_counts = processed_df.groupBy("year").count().orderBy("year").collect()
+    yearly_counts = [row.asDict() for row in yearly_counts]
+
+    spark.stop()
+
+    return {
+        "business_checkin_ranking": business_ranking,
+        "city_checkin_ranking": city_ranking,
+        "checkin_per_hour": hourly_counts,
+        "checkin_per_year": yearly_counts,
+    }
