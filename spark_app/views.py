@@ -69,6 +69,7 @@ def update_statistics(request):
     # 每年的评论数
     for review_count in statistics['review_count_year']:
         ReviewCountYear.objects.create(
+            year=review_count['year'],
             review=review_count['review']
         )
 
@@ -417,8 +418,8 @@ def update_review_statistics(request):
     YearReviewCount.objects.all().delete()
     UserReviewCount.objects.all().delete()
     TopWord.objects.all().delete()
-    GraphNode.objects.all().delete()
-    GraphEdge.objects.all().delete()
+    # GraphNode.objects.all().delete()
+    # GraphEdge.objects.all().delete()
 
     # 年度评论统计
     for year_review in statistics['year_review_counts']:
@@ -443,19 +444,19 @@ def update_review_statistics(request):
         )
 
     # 评论关系图
-    for node in statistics['graph_data']['nodes']:
-        GraphNode.objects.create(
-            name=node['name']
-        )
+    # for node in statistics['graph_data']['nodes']:
+    #     GraphNode.objects.create(
+    #         name=node['name']
+    #     )
 
-    for edge in statistics['graph_data']['edges']:
-        source_node, _ = GraphNode.objects.get_or_create(name=edge['source'])
-        target_node, _ = GraphNode.objects.get_or_create(name=edge['target'])
-        GraphEdge.objects.create(
-            source=source_node,
-            target=target_node,
-            value=edge['value']
-        )
+    # for edge in statistics['graph_data']['edges']:
+    #     source_node, _ = GraphNode.objects.get_or_create(name=edge['source'])
+    #     target_node, _ = GraphNode.objects.get_or_create(name=edge['target'])
+    #     GraphEdge.objects.create(
+    #         source=source_node,
+    #         target=target_node,
+    #         value=edge['value']
+    #     )
 
     return JsonResponse({"message": "Update review data succeeded"})
 
@@ -464,8 +465,8 @@ def update_review_statistics(request):
 @require_http_methods(['GET'])
 def get_review_statistics(request):
     statistics = {
-        "year_review_counts": list(YearReviewCount.objects.all().values('year', 'review_counts')),
-        "user_review_counts": list(UserReviewCount.objects.all().values('user_id', 'name', 'review_counts')),
+        "year_review_counts": list(ReviewInYear.objects.all().values('year', 'review_count')),
+        "user_review_counts": list(UserReviewCount.objects.all().values('name', 'review_counts'))[:10],
         "top_20_words": list(TopWord.objects.all().values('word', 'count')),
         "graph_data": {
             "nodes": list(GraphNode.objects.all().values('name')),
