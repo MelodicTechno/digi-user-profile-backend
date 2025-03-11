@@ -4,11 +4,12 @@
 from pyspark.sql import SparkSession
 import nltk
 from nltk.tokenize import word_tokenize
+from nltk.tag import pos_tag
 
 # 查询并处理评论
 def process_comments():
     """
-    从 Hive 表中查询评论数据，进行分词处理
+    从 Hive 表中查询评论数据，进行分词处理，并筛选出名词和形容词
     """
     # 创建 SparkSession
     spark = SparkSession.builder \
@@ -31,6 +32,14 @@ def process_comments():
         print("Punkt Tokenizer 模型尚未下载，开始下载...")
         nltk.download('punkt', download_dir=nltk_data_path)
 
+    # 检查词性标注器是否已经下载
+    try:
+        nltk.data.find('taggers/averaged_perceptron_tagger')
+        print("词性标注器已经存在，无需重新下载。")
+    except LookupError:
+        print("词性标注器尚未下载，开始下载...")
+        nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_path)
+
     # 查询 review 表中的 text 字段，提取 50 条数据
     review_df = spark.sql("""
         SELECT text
@@ -49,8 +58,12 @@ def process_comments():
         if isinstance(comment, str):
             # 分词
             tokens = word_tokenize(comment)
+            # 词性标注
+            pos_tags = pos_tag(tokens)
+            # 筛选出名词和形容词
+            filtered_words = [word for word, pos in pos_tags if pos in ['NN', 'NNS', 'NNS', 'NNPS', 'JJ', 'JJS']]
             # 将结果添加到列表
-            result.append(tokens)
+            result.append(filtered_words)
         else:
             print(f"Skipping non-string comment: {comment}")
 
