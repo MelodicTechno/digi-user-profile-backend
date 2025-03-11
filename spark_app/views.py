@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils.business_recommend import *
+from .utils.location_recommender import *
 from django.core.cache import cache
 from .models import (
     MostCommonShop,
@@ -369,8 +370,11 @@ def get_score_statistics(request):
 # 搜索和详情
 @require_http_methods(['GET'])
 def list_nearby_businesses(request, latitude, longitude):
+
+    list_nearby_businesses = location_recommend(float(latitude), float(longitude))
+
+    return JsonResponse(list_nearby_businesses)
     # 实现搜索逻辑
-    return JsonResponse({"message": "Nearby businesses"})
 
 @require_http_methods(['GET'])
 def get_business_details(request, business_id):
@@ -384,7 +388,6 @@ def get_business_details(request, business_id):
     spark.stop()
     return JsonResponse(comparison_dict)
     # 实现详情逻辑
-    return JsonResponse({"message": "Business details"})
 
 # 排序和筛选
 @require_http_methods(['GET'])
