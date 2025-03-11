@@ -34,5 +34,5 @@ urlpatterns = [
     path('businesses/sort/', sort_businesses, name='sort_businesses'),
     path('businesses/filter/', filter_businesses, name='filter_businesses'),
     path('recommendations/reviews/<int:user_id>/', get_review_recommendations, name='get_review_recommendations'),
-    path('get-word-cloud-data/', get_word_cloud_data, name='get_word_cloud_data'),
+    path('get_wordcloud_data/', get_word_cloud_data, name='get_word_cloud_data'),
 ]
