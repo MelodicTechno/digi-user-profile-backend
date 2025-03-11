@@ -89,7 +89,6 @@ local_settings.py
 .env
 db
 
-.idea/
 DigiUserProfileBackend/__pycache__/
 DigiUserProfileBackend/settings.py
 base/__pycache__/
@@ -120,3 +119,4 @@ Thumbs.db
 db.sqlite3
 
 api/__pycache__/
+model/

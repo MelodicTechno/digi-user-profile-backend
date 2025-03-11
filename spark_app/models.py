@@ -223,3 +223,11 @@ class GraphEdge(models.Model):
 
     def __str__(self):
         return f"{self.source.name} -> {self.target.name}: {self.value}"
+
+# 统计词频的模型 用来画词云图
+class WordFrequency(models.Model):
+    word = models.CharField(max_length=255, default='cool')
+    count = models.IntegerField()
+
+    def __str__(self):
+        return f'Word: {self.word}, Count: {self.count}'

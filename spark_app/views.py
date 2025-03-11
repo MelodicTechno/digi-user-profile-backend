@@ -4,6 +4,7 @@ from .utils import analyse
 from .utils.business_recommend import *
 from .utils.location_recommender import *
 from django.core.cache import cache
+from .utils import word_cloud
 from .models import (
     MostCommonShop,
     ShopMostCity,
@@ -23,9 +24,10 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge,
+    GraphNode, GraphEdge, WordFrequency,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.word_cloud import process_comments
 
 
 # 初始化和统计
@@ -69,6 +71,7 @@ def update_statistics(request):
     # 每年的评论数
     for review_count in statistics['review_count_year']:
         ReviewCountYear.objects.create(
+            year=review_count['year'],
             review=review_count['review']
         )
 
@@ -327,7 +330,6 @@ def get_business_statistics(request):
         "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
-        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
@@ -350,6 +352,7 @@ def get_user_statistics(request):
         "total_and_silent": list(
             TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users',
                                                 'silent_ratio')),
+        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
@@ -419,8 +422,8 @@ def update_review_statistics(request):
     YearReviewCount.objects.all().delete()
     UserReviewCount.objects.all().delete()
     TopWord.objects.all().delete()
-    GraphNode.objects.all().delete()
-    GraphEdge.objects.all().delete()
+    # GraphNode.objects.all().delete()
+    # GraphEdge.objects.all().delete()
 
     # 年度评论统计
     for year_review in statistics['year_review_counts']:
@@ -445,19 +448,19 @@ def update_review_statistics(request):
         )
 
     # 评论关系图
-    for node in statistics['graph_data']['nodes']:
-        GraphNode.objects.create(
-            name=node['name']
-        )
+    # for node in statistics['graph_data']['nodes']:
+    #     GraphNode.objects.create(
+    #         name=node['name']
+    #     )
 
-    for edge in statistics['graph_data']['edges']:
-        source_node, _ = GraphNode.objects.get_or_create(name=edge['source'])
-        target_node, _ = GraphNode.objects.get_or_create(name=edge['target'])
-        GraphEdge.objects.create(
-            source=source_node,
-            target=target_node,
-            value=edge['value']
-        )
+    # for edge in statistics['graph_data']['edges']:
+    #     source_node, _ = GraphNode.objects.get_or_create(name=edge['source'])
+    #     target_node, _ = GraphNode.objects.get_or_create(name=edge['target'])
+    #     GraphEdge.objects.create(
+    #         source=source_node,
+    #         target=target_node,
+    #         value=edge['value']
+    #     )
 
     return JsonResponse({"message": "Update review data succeeded"})
 
@@ -466,8 +469,8 @@ def update_review_statistics(request):
 @require_http_methods(['GET'])
 def get_review_statistics(request):
     statistics = {
-        "year_review_counts": list(YearReviewCount.objects.all().values('year', 'review_counts')),
-        "user_review_counts": list(UserReviewCount.objects.all().values('user_id', 'name', 'review_counts')),
+        "year_review_counts": list(ReviewInYear.objects.all().values('year', 'review_count')),
+        "user_review_counts": list(UserReviewCount.objects.all().values('name', 'review_counts'))[:10],
         "top_20_words": list(TopWord.objects.all().values('word', 'count')),
         "graph_data": {
             "nodes": list(GraphNode.objects.all().values('name')),
@@ -534,3 +537,56 @@ def get_checkin_statistics(request):
 
     # 返回JsonResponse
     return JsonResponse(statistics)
+
+# 获取词频
+@require_http_methods(['GET'])
+def get_wordcloud_data(request):
+    """
+    查询分词数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询分词数据
+        word_frequencies = list(WordFrequency.objects.all().values('word', 'count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "word_frequencies": word_frequencies,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# 更新词云数据
+@require_http_methods(['GET'])
+def update_wordcloud_data(request):
+    """
+    调用 process_comments 函数处理评论数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 process_comments 函数处理评论数据
+        comments = process_comments()
+
+        # 统计单词频率
+        word_frequency = {}
+        for comment in comments:
+            for word in comment:
+                if word in word_frequency:
+                    word_frequency[word] += 1
+                else:
+                    word_frequency[word] = 1
+
+        # 清空现有数据
+        WordFrequency.objects.all().delete()
+
+        # 将单词频率存储到数据库中
+        for word, count in word_frequency.items():
+            WordFrequency.objects.create(word=word, count=count)
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
