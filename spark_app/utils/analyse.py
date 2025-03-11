@@ -1010,7 +1010,7 @@ def update_review():
         'graph_data': graph_data,
     }
 
-def update_checkout():
+def update_checkin():
 
     spark = SparkSession.builder \
         .appName("HiveExample") \

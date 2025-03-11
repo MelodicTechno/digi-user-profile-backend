@@ -24,8 +24,7 @@ from .models import (
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge,
 )
-from .utils.analyse import update_review
-
+from .utils.analyse import update_review, update_checkin
 
 
 # 初始化和统计
@@ -474,3 +473,47 @@ def get_review_statistics(request):
     }
 
     return JsonResponse(statistics)
+
+@require_http_methods(['GET'])
+def update_checkin_statistics(request):
+
+    # 获取数据
+    try:
+        statistics = update_checkin()
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update review data: {str(e)}"}, status=500)
+
+    # 删表
+    BusinessCheckinRanking.objects.all().delete()
+    CityCheckinRanking.objects.all().delete()
+    CheckinPerHour.objects.all().delete()
+    CheckinPerYear.objects.all().delete()
+
+    # 插值
+    for ranking in statistics['business_checkin_ranking']:
+        BusinessCheckinRanking.objects.create(
+            name=ranking['name'],
+            city=ranking['city'],
+            total_checkins=ranking['total_checkins']
+        )
+
+    for ranking in statistics['city_checkin_ranking']:
+        CityCheckinRanking.objects.create(
+            city=ranking['city'],
+            total_checkins=ranking['total_checkins']
+        )
+
+    for count in statistics['checkin_per_hour']:
+        CheckinPerHour.objects.create(
+            hour=count['hour'],
+            checkin_count=count['count']
+        )
+
+    for count in statistics['checkin_per_year']:
+        CheckinPerYear.objects.create(
+            year=count['year'],
+            checkin_count=count['count']
+        )
+
+    # 返回
+    return JsonResponse({"message": "Update checkin data succeeded"})
