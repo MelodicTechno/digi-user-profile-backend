@@ -784,7 +784,6 @@ def update_review():
     updated_review = hive_df.withColumn("date", to_date(col("date"), "yyyy-MM-dd")) \
         .withColumn("year", year(col("date")))
 
-    # updated_df.show(5, truncate=False)
     # 将 updated_review 注册为临时视图
     updated_review.createOrReplaceTempView("updated_review")
 
@@ -887,10 +886,9 @@ def update_review():
     word_counts_df = words_df.groupBy("word").count()
 
     # 按词频排序并提取 Top 10
-    top_10_words_df = word_counts_df.orderBy(col("count").desc()).limit(10)
+    top_10_words_df = word_counts_df.orderBy(col("count").desc()).limit(10).collect()
+    top_10_words = [row.asDict() for row in top_20_words_df]
 
-    # 显示结果
-    top_10_words_df.show()
 
     # 计算单词的关系图（譬如chinese、steak等单词）
     # 从 Hive 表中读取数据
@@ -969,5 +967,6 @@ def update_review():
         'year_review_counts': year_review_counts,
         'user_review_counts': user_review_counts,
         'top_20_words': top_20_words,
+        'top_10_words': top_10_words,
         'graph_data': graph_data,
     }
