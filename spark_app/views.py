@@ -25,9 +25,10 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge, WordFrequency,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.user_mission import get_deep
 from .utils.word_cloud import process_comments
 
 
@@ -595,3 +596,65 @@ def update_wordcloud_data(request):
 @require_http_methods(['GET'])
 def get_business_information(request, business_id):
     return JsonResponse(get_business(business_id))
+def update_yearly_statistics(request):
+    """
+    调用 get_deep 函数处理每年的统计数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_deep 函数处理数据
+        yearly_statistics = get_deep()
+
+        # 清空现有数据
+        YearlyStatistics.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for stat in yearly_statistics:
+            # 确保 year 是有效的整数
+            year = stat.get('year')
+            if year:
+                if isinstance(year, str) and year.isdigit():
+                    year = int(year)
+                elif isinstance(year, int):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid year entry: {stat}")
+                    continue
+
+                YearlyStatistics.objects.update_or_create(
+                    year=year,
+                    defaults={
+                        'new_users': stat['new_users'],
+                        'review_count': stat['review_count'],
+                        'elite_users': stat['elite_users'],
+                        'tip_count': stat['tip_count'],
+                        'checkin_count': stat['checkin_count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing year: {stat}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+#  获取巨他妈难的那个数据
+@require_http_methods(['GET'])
+def get_yearly_statistics(request):
+    """
+    查询每年的统计数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询每年的统计数据
+        yearly_statistics = list(YearlyStatistics.objects.all().values('year', 'new_users', 'review_count', 'elite_users', 'tip_count', 'checkin_count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "yearly_statistics": yearly_statistics,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
