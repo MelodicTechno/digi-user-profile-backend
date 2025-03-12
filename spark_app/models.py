@@ -275,3 +275,16 @@ class TopCategory(models.Model):
 
     def __str__(self):
         return f"{self.category}: {self.count}"
+
+# 综合查询
+class BusinessRanking(models.Model):
+    business_id = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    city = models.CharField(max_length=255)
+    stars = models.FloatField()
+    total_checkins = models.IntegerField()
+    review_count = models.IntegerField()
+    rank = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} ({self.city}) - Rank: {self.rank}"

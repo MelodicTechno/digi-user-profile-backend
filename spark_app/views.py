@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils import pie
 from .utils.business_recommend import *
+from .utils.general import get_general
 from .utils.location_recommender import *
 from .utils.get_business import *
 from django.core.cache import cache
@@ -27,7 +28,7 @@ from .models import (
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
-    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking,
 )
 from .utils.analyse import update_review, update_checkin
 from .utils.user_mission import get_deep
@@ -661,6 +662,8 @@ def update_wordcloud_data(request):
 @require_http_methods(['GET'])
 def get_business_information(request, business_id):
     return JsonResponse(get_business(business_id))
+
+
 def update_yearly_statistics(request):
     """
     调用 get_deep 函数处理每年的统计数据，并将结果存储到数据库中
@@ -734,3 +737,68 @@ def recommend_friend(request):
     return JsonResponse(statistics)
 
 
+# 更新综合大分析数据
+@require_http_methods(['GET'])
+def update_business_ranking(request):
+    """
+    调用 get_general 函数处理业务排名数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_general 函数处理数据
+        business_ranking_data = get_general()
+
+        # 清空现有数据
+        BusinessRanking.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for data in business_ranking_data:
+            # 确保 business_id 是有效的字符串
+            business_id = data.get('business_id')
+            if business_id:
+                if isinstance(business_id, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid business_id entry: {data}")
+                    continue
+
+                BusinessRanking.objects.update_or_create(
+                    business_id=business_id,
+                    defaults={
+                        'name': data['name'],
+                        'city': data['city'],
+                        'stars': data['stars'],
+                        'total_checkins': data['total_checkins'],
+                        'review_count': data['review_count'],
+                        'rank': data['rank']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing business_id: {data}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 查询综合数据
+@require_http_methods(['GET'])
+def get_business_ranking(request):
+    """
+    查询业务排名数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询业务排名数据
+        business_ranking = list(BusinessRanking.objects.all().values(
+            'business_id', 'name', 'city', 'stars', 'total_checkins', 'review_count', 'rank'
+        ))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "business_ranking": business_ranking,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
