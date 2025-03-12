@@ -738,6 +738,7 @@ def recommend_friend(request):
 
 
 # 更新综合大分析数据
+@require_http_methods(['GET'])
 def update_business_ranking(request):
     """
     调用 get_general 函数处理业务排名数据，并将结果存储到数据库中
@@ -776,6 +777,28 @@ def update_business_ranking(request):
 
         # 返回成功响应
         return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 查询综合数据
+@require_http_methods(['GET'])
+def get_business_ranking(request):
+    """
+    查询业务排名数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询业务排名数据
+        business_ranking = list(BusinessRanking.objects.all().values(
+            'business_id', 'name', 'city', 'stars', 'total_checkins', 'review_count', 'rank'
+        ))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "business_ranking": business_ranking,
+        }
+
+        return JsonResponse(data)
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)

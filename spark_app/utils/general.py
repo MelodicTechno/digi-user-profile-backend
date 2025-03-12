@@ -1,4 +1,4 @@
-from pyspark import F
+from pyspark.sql import functions as F
 from pyspark.sql.functions import col, split, size
 from pyspark.sql.functions import col, split, size
 from pyspark.sql.window import Window
@@ -43,7 +43,4 @@ def get_general():
 
     # 将结果转换为字典
     result_dict = result_df.toPandas().to_dict(orient='records')
-
-    # 打印结果字典
-    print(result_dict)
     return result_dict
