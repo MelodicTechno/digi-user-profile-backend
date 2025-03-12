@@ -646,6 +646,7 @@ def update_wordcloud_data(request):
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
 
+
 @require_http_methods(['GET'])
 def get_business_information(request, business_id):
     return JsonResponse(get_business(business_id))
@@ -711,3 +712,14 @@ def get_yearly_statistics(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+# 好友推荐后端接口
+@require_http_methods(['GET'])
+def recommend_friend(request):
+    statistics = {
+        "most_common_shop": list(MostCommonShop.objects.all().values('name', 'shop_count')),
+    }
+
+    return JsonResponse(statistics)
+
+
