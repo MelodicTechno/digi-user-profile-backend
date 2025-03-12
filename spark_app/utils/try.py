@@ -12,25 +12,17 @@ spark = SparkSession.builder \
     .enableHiveSupport() \
     .getOrCreate()
 
-business_df = spark.read.table("default.business")
-
-# 将 categories 字段从逗号分隔的字符串转换为数组
-business_df = business_df.withColumn("categories", split(col("categories"), ","))
-
-# 展开 categories 数组并统计每个类别的出现次数
-category_counts = (
-    business_df
-    .select(explode(col("categories")).alias("category"))
-    .withColumn("category", trim(col("category")))  # 去除每个 category 的多余空格
-    .groupBy("category")
-    .count()  # 统计每个类别的出现次数
-    .orderBy(col("count").desc())  # 按出现次数降序排序
-    .limit(10)  # 取前10名
-)
+stars_high_city = spark.sql("""
+SELECT city, 
+       AVG(CAST(stars AS FLOAT)) AS average_stars 
+FROM default.business 
+GROUP BY city 
+ORDER BY average_stars DESC 
+LIMIT 10
+    """).collect()
 
 
-# 显示结果
-category_counts.show()
 
+print(stars_high_city)
 # 停止 SparkSession
 spark.stop()
