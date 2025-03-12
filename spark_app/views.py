@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
+from .utils import pie
 from .utils.business_recommend import *
 from django.core.cache import cache
 from .utils import word_cloud
@@ -23,7 +24,7 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge, WordFrequency,
+    GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars
 )
 from .utils.analyse import update_review, update_checkin
 from .utils.word_cloud import process_comments
@@ -89,7 +90,6 @@ def update_statistics(request):
 # 更新商户统计数据
 @require_http_methods(['GET'])
 def update_business_statistics(request):
-
     # 更新数据
     try:
         statistics = analyse.update_business()
@@ -167,6 +167,58 @@ def update_business_statistics(request):
         )
 
     return JsonResponse({"message": "Update business data succeeded"})
+
+@require_http_methods(['GET'])
+def update_restaurantCount_statistics(request):
+    try:
+        statistics = pie.update_business_pie()
+        print("Statistics:", statistics)
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update user data: {str(e)}"}, status=500)
+
+    # RestaurantCount.objects.all().delete()
+    # RestaurantsReviewCount.objects.all().delete()
+    RestaurantReviewStars.objects.all().delete()
+
+    # 获取 category_count 字典
+    # category_count = statistics['category_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in category_count.items():
+    #     RestaurantCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    # restaurant_category_count = statistics['Restaurants_review_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in restaurant_category_count.items():
+    #     RestaurantsReviewCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    print(statistics)
+
+    for restaurant_type, data in statistics.items():
+        for item in data:
+            RestaurantReviewStars.objects.create(
+                restaurant_type=restaurant_type.split("_")[0].capitalize(),  # 转换为“Chinese”、“American”等
+                rating_group=item["rating_group"],
+                count=item["count"]
+            )
+
+    return JsonResponse({"message": "Update restaurant data succeeded"})
+
+@require_http_methods(['GET'])
+def get_restaurantCount_statistics(request):
+    statistics = {
+        "restaurant_pie_chart": list(RestaurantCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart2": list(RestaurantsReviewCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart3": list(RestaurantReviewStars.objects.all().values('restaurant_type', 'rating_group', 'count'))
+    }
+
+    return JsonResponse(statistics)
+
 
 # 更新用户统计数据
 @require_http_methods(['GET'])
