@@ -3,8 +3,7 @@
 """
 from pyspark.sql.functions import (year,
                                    col, split, explode, count, to_timestamp, countDistinct)
-from .setup import create_spark
-
+from spark_app.utils.setup import create_spark
 
 def get_deep():
     spark = create_spark()
@@ -66,5 +65,5 @@ def get_deep():
     spark.stop()
 
     # 打印结果
-    # print(yearly_statistics_dict)
+    print(yearly_statistics_dict)
     return yearly_statistics_dict

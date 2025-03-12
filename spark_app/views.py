@@ -604,9 +604,18 @@ def update_yearly_statistics(request):
         # 将数据保存到数据库中
         for stat in yearly_statistics:
             # 确保 year 是有效的整数
-            if stat['year'] and isinstance(stat['year'], int):
+            year = stat.get('year')
+            if year:
+                if isinstance(year, str) and year.isdigit():
+                    year = int(year)
+                elif isinstance(year, int):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid year entry: {stat}")
+                    continue
+
                 YearlyStatistics.objects.update_or_create(
-                    year=stat['year'],
+                    year=year,
                     defaults={
                         'new_users': stat['new_users'],
                         'review_count': stat['review_count'],
@@ -616,7 +625,7 @@ def update_yearly_statistics(request):
                     }
                 )
             else:
-                print(f"Skipping invalid year entry: {stat}")
+                logging.debug(f"Skipping entry with missing year: {stat}")
 
         # 返回成功响应
         return JsonResponse({"status": "success"})
