@@ -1,7 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
+from .utils import pie
 from .utils.business_recommend import *
+from .utils.location_recommender import *
+from .utils.get_business import *
 from django.core.cache import cache
 from .utils import word_cloud
 from .models import (
@@ -23,9 +26,11 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge, WordFrequency,
+    GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.user_mission import get_deep
 from .utils.word_cloud import process_comments
 
 
@@ -89,7 +94,6 @@ def update_statistics(request):
 # 更新商户统计数据
 @require_http_methods(['GET'])
 def update_business_statistics(request):
-
     # 更新数据
     try:
         statistics = analyse.update_business()
@@ -167,6 +171,69 @@ def update_business_statistics(request):
         )
 
     return JsonResponse({"message": "Update business data succeeded"})
+
+@require_http_methods(['GET'])
+def update_restaurantCount_statistics(request):
+    try:
+        statistics = pie.update_business_pie()
+        print("Statistics:", statistics)
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update user data: {str(e)}"}, status=500)
+
+    # RestaurantCount.objects.all().delete()
+    # RestaurantsReviewCount.objects.all().delete()
+    # RestaurantReviewStars.objects.all().delete()
+    TopCategory.objects.all().delete()
+
+    # 获取 category_count 字典
+    # category_count = statistics['category_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in category_count.items():
+    #     RestaurantCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    # restaurant_category_count = statistics['Restaurants_review_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in restaurant_category_count.items():
+    #     RestaurantsReviewCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    # print(statistics)
+    #
+    # for restaurant_type, data in statistics.items():
+    #     for item in data:
+    #         RestaurantReviewStars.objects.create(
+    #             restaurant_type=restaurant_type.split("_")[0].capitalize(),  # 转换为“Chinese”、“American”等
+    #             rating_group=item["rating_group"],
+    #             count=item["count"]
+    #         )
+
+    category_counts = statistics['category_counts']
+    # 遍历 category_count 的键值对
+    for item in category_counts:
+        TopCategory.objects.create(
+            category=item["category"].strip(),  # 去掉多余的空格
+            count=item["count"]
+        )
+
+
+    return JsonResponse({"message": "Update restaurant data succeeded"})
+
+@require_http_methods(['GET'])
+def get_restaurantCount_statistics(request):
+    statistics = {
+        "restaurant_pie_chart": list(RestaurantCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart2": list(RestaurantsReviewCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart3": list(RestaurantReviewStars.objects.all().values('restaurant_type', 'rating_group', 'count')),
+        "top_category": list(TopCategory.objects.all().values('category', 'count'))
+    }
+
+    return JsonResponse(statistics)
+
 
 # 更新用户统计数据
 @require_http_methods(['GET'])
@@ -329,7 +396,6 @@ def get_business_statistics(request):
         "city_checkin_ranking": list(CityCheckinRanking.objects.all().values('city', 'total_checkins'))[:10],
         "checkin_per_hour": list(CheckinPerHour.objects.all().values('hour', 'checkin_count')),
         "checkin_per_year": list(CheckinPerYear.objects.all().values('year', 'checkin_count')),
-        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
@@ -352,6 +418,7 @@ def get_user_statistics(request):
         "total_and_silent": list(
             TotalAndSilent.objects.all().values('year', 'total_users', 'reviewed_users', 'silent_users',
                                                 'silent_ratio')),
+        "elite_user_percent": list(EliteUserPercent.objects.all().values('year', 'ratio')),
     }
 
     return JsonResponse(statistics)
@@ -372,8 +439,11 @@ def get_score_statistics(request):
 # 搜索和详情
 @require_http_methods(['GET'])
 def list_nearby_businesses(request, latitude, longitude):
+
+    list_nearby_businesses = location_recommend(float(latitude), float(longitude))
+
+    return JsonResponse(list_nearby_businesses)
     # 实现搜索逻辑
-    return JsonResponse({"message": "Nearby businesses"})
 
 @require_http_methods(['GET'])
 def get_business_details(request, business_id):
@@ -387,7 +457,6 @@ def get_business_details(request, business_id):
     spark.stop()
     return JsonResponse(comparison_dict)
     # 实现详情逻辑
-    return JsonResponse({"message": "Business details"})
 
 # 排序和筛选
 @require_http_methods(['GET'])
@@ -587,3 +656,81 @@ def update_wordcloud_data(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_business_information(request, business_id):
+    return JsonResponse(get_business(business_id))
+def update_yearly_statistics(request):
+    """
+    调用 get_deep 函数处理每年的统计数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_deep 函数处理数据
+        yearly_statistics = get_deep()
+
+        # 清空现有数据
+        YearlyStatistics.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for stat in yearly_statistics:
+            # 确保 year 是有效的整数
+            year = stat.get('year')
+            if year:
+                if isinstance(year, str) and year.isdigit():
+                    year = int(year)
+                elif isinstance(year, int):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid year entry: {stat}")
+                    continue
+
+                YearlyStatistics.objects.update_or_create(
+                    year=year,
+                    defaults={
+                        'new_users': stat['new_users'],
+                        'review_count': stat['review_count'],
+                        'elite_users': stat['elite_users'],
+                        'tip_count': stat['tip_count'],
+                        'checkin_count': stat['checkin_count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing year: {stat}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+#  获取巨他妈难的那个数据
+@require_http_methods(['GET'])
+def get_yearly_statistics(request):
+    """
+    查询每年的统计数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询每年的统计数据
+        yearly_statistics = list(YearlyStatistics.objects.all().values('year', 'new_users', 'review_count', 'elite_users', 'tip_count', 'checkin_count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "yearly_statistics": yearly_statistics,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 好友推荐后端接口
+@require_http_methods(['GET'])
+def recommend_friend(request):
+    statistics = {
+        "most_common_shop": list(MostCommonShop.objects.all().values('name', 'shop_count')),
+    }
+
+    return JsonResponse(statistics)
+
+

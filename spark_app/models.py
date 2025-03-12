@@ -215,7 +215,6 @@ class GraphNode(models.Model):
     def __str__(self):
         return self.name
 
-
 class GraphEdge(models.Model):
     source = models.ForeignKey(GraphNode, related_name='source_node', on_delete=models.CASCADE)
     target = models.ForeignKey(GraphNode, related_name='target_node', on_delete=models.CASCADE)
@@ -231,3 +230,48 @@ class WordFrequency(models.Model):
 
     def __str__(self):
         return f'Word: {self.word}, Count: {self.count}'
+
+
+# 各种餐厅数据
+# 模型类用于存储不同类型餐厅的数量统计
+class RestaurantCount(models.Model):
+    type = models.CharField(max_length=255)  # 餐厅类型（中国菜、美式、墨西哥）
+    count = models.IntegerField()  # 餐厅数量
+
+    def __str__(self):
+        return f"{self.type}: {self.count}"
+
+class RestaurantsReviewCount(models.Model):
+    type = models.CharField(max_length=255)  # 餐厅类型（中国菜、美式、墨西哥）
+    count = models.IntegerField()  # 餐厅数量
+
+    def __str__(self):
+        return f"{self.type}: {self.count}"
+
+class RestaurantReviewStars(models.Model):
+    restaurant_type = models.CharField(max_length=255)  # 餐厅类型（中国菜、美式、墨西哥）
+    rating_group = models.CharField(max_length=10)      # 评分分段（如 "0-1", "1-2" 等）
+    count = models.IntegerField()                       # 该分段的数量
+
+    def __str__(self):
+        return f"{self.restaurant_type} - {self.rating_group}: {self.count}"
+
+# 用户分析里超难的那个
+class YearlyStatistics(models.Model):
+    year = models.IntegerField(unique=True)
+    new_users = models.IntegerField()
+    review_count = models.IntegerField()
+    elite_users = models.IntegerField()
+    tip_count = models.IntegerField()
+    checkin_count = models.IntegerField()
+
+    def __str__(self):
+        return f'Year: {self.year}'
+
+# 最多的种类
+class TopCategory(models.Model):
+    category = models.CharField(max_length=255, unique=True)  # 类别名称
+    count = models.IntegerField()  # 出现次数
+
+    def __str__(self):
+        return f"{self.category}: {self.count}"
