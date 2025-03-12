@@ -11,7 +11,7 @@ from .views import (
     get_business_statistics, get_user_statistics,
     update_user_statistics, update_business_statistics, update_score_statistics, get_score_statistics,
     update_review_statistics, get_review_statistics, update_checkin_statistics, get_checkin_statistics,
-    update_wordcloud_data, get_wordcloud_data,
+    update_wordcloud_data, get_wordcloud_data, get_business_information
 )
 
 urlpatterns = [
@@ -36,4 +36,5 @@ urlpatterns = [
     path('recommendations/reviews/<int:user_id>/', get_review_recommendations, name='get_review_recommendations'),
     path('update_wordcloud_data/', update_wordcloud_data, name='get_word_cloud_data'),
     path('get_wordcloud_data/', get_wordcloud_data, name='get_word_cloud_data'),
+    path('get_business_information/<str:business_id>/',get_business_information, name='get_business_information' ),
 ]

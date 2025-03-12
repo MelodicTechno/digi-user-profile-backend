@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils.business_recommend import *
 from .utils.location_recommender import *
+from .utils.get_business import *
 from django.core.cache import cache
 from .utils import word_cloud
 from .models import (
@@ -590,3 +591,7 @@ def update_wordcloud_data(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def get_business_information(request, business_id):
+    return JsonResponse(get_business(business_id))

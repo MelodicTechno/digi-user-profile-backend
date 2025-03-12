@@ -42,7 +42,7 @@ def location_recommend(user_latitude, user_longitude):
     score_udf = udf(distance_score, IntegerType())
 
     # 查询商家数据，并计算距离和评分
-    business_with_score = spark.sql("SELECT business.business_id,business.name,business.stars,business.review_count,business.longitude,business.latitude FROM default.business") \
+    business_with_score = spark.sql("SELECT business_id, name, stars, review_count, longitude, latitude FROM default.business") \
         .withColumn("distance", distance_udf(lit(user_longitude), lit(user_latitude), col("longitude"), col("latitude"))) \
         .withColumn("distance_score", score_udf(col("distance")))
 
@@ -124,7 +124,7 @@ def location_recommend(user_latitude, user_longitude):
         row["business_id"]: {
             "name": row["name"],
             "stars": row["stars"],
-            "distance": round(row["distance"] / 1000, 2),
+            "distance": row["distance"],
             "total_score": row["total_score"],
             "review_count": row["review_count"]
         }
