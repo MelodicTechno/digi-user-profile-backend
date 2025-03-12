@@ -27,7 +27,7 @@ from .models import (
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
-    GraphNode, GraphEdge, WordFrequency, YearlyStatistics,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory,
 )
 from .utils.analyse import update_review, update_checkin
 from .utils.user_mission import get_deep
@@ -182,7 +182,8 @@ def update_restaurantCount_statistics(request):
 
     # RestaurantCount.objects.all().delete()
     # RestaurantsReviewCount.objects.all().delete()
-    RestaurantReviewStars.objects.all().delete()
+    # RestaurantReviewStars.objects.all().delete()
+    TopCategory.objects.all().delete()
 
     # 获取 category_count 字典
     # category_count = statistics['category_count']
@@ -201,15 +202,24 @@ def update_restaurantCount_statistics(request):
     #         count=count
     #     )
 
-    print(statistics)
+    # print(statistics)
+    #
+    # for restaurant_type, data in statistics.items():
+    #     for item in data:
+    #         RestaurantReviewStars.objects.create(
+    #             restaurant_type=restaurant_type.split("_")[0].capitalize(),  # 转换为“Chinese”、“American”等
+    #             rating_group=item["rating_group"],
+    #             count=item["count"]
+    #         )
 
-    for restaurant_type, data in statistics.items():
-        for item in data:
-            RestaurantReviewStars.objects.create(
-                restaurant_type=restaurant_type.split("_")[0].capitalize(),  # 转换为“Chinese”、“American”等
-                rating_group=item["rating_group"],
-                count=item["count"]
-            )
+    category_counts = statistics['category_counts']
+    # 遍历 category_count 的键值对
+    for item in category_counts:
+        TopCategory.objects.create(
+            category=item["category"].strip(),  # 去掉多余的空格
+            count=item["count"]
+        )
+
 
     return JsonResponse({"message": "Update restaurant data succeeded"})
 
@@ -218,7 +228,8 @@ def get_restaurantCount_statistics(request):
     statistics = {
         "restaurant_pie_chart": list(RestaurantCount.objects.all().values('type', 'count')),
         "restaurant_pie_chart2": list(RestaurantsReviewCount.objects.all().values('type', 'count')),
-        "restaurant_pie_chart3": list(RestaurantReviewStars.objects.all().values('restaurant_type', 'rating_group', 'count'))
+        "restaurant_pie_chart3": list(RestaurantReviewStars.objects.all().values('restaurant_type', 'rating_group', 'count')),
+        "top_category": list(TopCategory.objects.all().values('category', 'count'))
     }
 
     return JsonResponse(statistics)
