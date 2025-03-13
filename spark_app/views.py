@@ -28,9 +28,10 @@ from .models import (
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
-    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking, ReviewRank,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.review_shits import poop
 from .utils.user_mission import get_deep
 from .utils.word_cloud import process_comments
 
@@ -802,3 +803,95 @@ def get_business_ranking(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+# 非常不开心
+@require_http_methods(['GET'])
+def update_review_data(request):
+    """
+    调用 poop 函数处理评论数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 poop 函数处理数据
+        review_data = poop()
+
+        # 清空现有数据
+        ReviewRank.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for data in review_data['summary']:
+            # 确保 type 是有效的字符串
+            review_type = data.get('type')
+            if review_type:
+                if isinstance(review_type, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid review_type entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    review_type=review_type,
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing review_type: {data}")
+
+        for data in review_data['positive_words']:
+            # 确保 word 是有效的字符串
+            word = data.get('word')
+            if word:
+                if isinstance(word, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid word entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    word=word,
+                    review_type='positive',
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing word: {data}")
+
+        for data in review_data['negative_words']:
+            # 确保 word 是有效的字符串
+            word = data.get('word')
+            if word:
+                if isinstance(word, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid word entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    word=word,
+                    review_type='negative',
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing word: {data}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 想杀死所有人
+@require_http_methods(['GET'])
+def get_review_data(request):
+    # 返回值
+    statistics = {
+        "summary": list(ReviewRank.objects.filter(word__isnull=True).values('review_type', 'count')),
+        "positive_words": list(ReviewRank.objects.filter(review_type='positive').values('word', 'count'))[:10],
+        "negative_words": list(ReviewRank.objects.filter(review_type='negative').values('word', 'count'))[:10],
+    }
+
+    # 返回JsonResponse
+    return JsonResponse(statistics)

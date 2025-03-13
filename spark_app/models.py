@@ -288,3 +288,12 @@ class BusinessRanking(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.city}) - Rank: {self.rank}"
+
+
+class ReviewRank(models.Model):
+    review_type = models.CharField(max_length=50)  # 评论类型
+    word = models.CharField(max_length=100, blank=True, null=True)  # 评论中的单词
+    count = models.IntegerField()  # 数量
+
+    def __str__(self):
+        return f"{self.review_type}: {self.word} ({self.count})"
