@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .views import (
     for_test,
     init_all,
@@ -11,9 +12,10 @@ from .views import (
     get_business_statistics, get_user_statistics,
     update_user_statistics, update_business_statistics, update_score_statistics, get_score_statistics,
     update_review_statistics, get_review_statistics, update_checkin_statistics, get_checkin_statistics,
+    get_business_information, update_yearly_statistics,
+    get_yearly_statistics,
     update_wordcloud_data, get_wordcloud_data, update_restaurantCount_statistics, get_restaurantCount_statistics,
-    update_wordcloud_data, get_wordcloud_data, get_business_information, get_wordcloud_data, update_yearly_statistics, get_yearly_statistics,
-    update_wordcloud_data, get_wordcloud_data, update_restaurantCount_statistics, get_restaurantCount_statistics, recommend_friend
+    recommend_friend, update_business_ranking, get_business_ranking, update_review_data, get_review_data
 
 )
 
@@ -44,5 +46,9 @@ urlpatterns = [
     path('get_business_information/<str:business_id>/',get_business_information, name='get_business_information' ),
     path('update_yearly_statistics/', update_yearly_statistics, name='update_yearly_statistics'),
     path('get_yearly_statistics/', get_yearly_statistics, name='get_yearly_statistics'),
-    path('friend_recommend/', recommend_friend, name='recommend_friend')
+    path('friend_recommend/', recommend_friend, name='recommend_friend'),
+    path('update_business_ranking/', update_business_ranking, name='update_business_ranking'),
+    path('get_business_ranking/', get_business_ranking, name='get_business_ranking'),
+    path('update_review_data/', update_review_data, name='update_review_data'),
+    path('get_review_data/', get_review_data, name='get_review_data'),
 ]
