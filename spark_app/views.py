@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils import pie
@@ -952,3 +953,11 @@ def get_review_data(request):
     # 返回JsonResponse
     return JsonResponse(statistics)
 
+@csrf_exempt  # 如果前端和后端不在同一域名下，可能需要禁用 CSRF 保护
+@require_http_methods(["POST"])
+def receive_data(request):
+    import json
+    data = json.loads(request.body)
+    message = data.get('message', 'No message received')
+    print(f"Received message: {message}")
+    return JsonResponse({"status": "success", "message": "Data received successfully"})

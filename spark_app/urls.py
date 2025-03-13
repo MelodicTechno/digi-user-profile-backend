@@ -16,7 +16,7 @@ from .views import (
     get_yearly_statistics,
     update_wordcloud_data, get_wordcloud_data, update_restaurantCount_statistics, get_restaurantCount_statistics,
     recommend_friend, update_business_ranking, get_business_ranking, get_relation_graph, save_relation_graph_to_db,
-    recommend_friend, update_business_ranking, get_business_ranking, update_review_data, get_review_data
+    recommend_friend, update_business_ranking, get_business_ranking, update_review_data, get_review_data, receive_data
 
 )
 
@@ -58,4 +58,5 @@ urlpatterns = [
     path('save_relation_graph_to_db/', save_relation_graph_to_db, name='save_relation_graph_to_db'),
     path('update_review_data/', update_review_data, name='update_review_data'),
     path('get_review_data/', get_review_data, name='get_review_data'),
+    path('api/receive_data/', receive_data, name='receive_data'),
 ]
