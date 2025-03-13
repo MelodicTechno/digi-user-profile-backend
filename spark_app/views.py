@@ -4,6 +4,7 @@ from .utils import analyse
 from .utils.business_recommend import *
 from .utils.location_recommender import *
 from .utils.get_business import *
+from .utils.rating_recommender import *
 from django.core.cache import cache
 from .utils import word_cloud
 from .models import (
@@ -595,3 +596,14 @@ def update_wordcloud_data(request):
 @require_http_methods(['GET'])
 def get_business_information(request, business_id):
     return JsonResponse(get_business(business_id))
+
+
+@require_http_methods(['GET'])
+def get_rating_recommend(request, user_id):
+    user_file = '/Users/a123/Documents/上程/svd/user_embeddings.csv'
+    item_file = '/Users/a123/Documents/上程/svd/item_embeddings.csv'
+    # 加载嵌入文件
+    user_embeddings, item_embeddings = load_embeddings(user_file, item_file)
+    recommended_items = recommend_items(user_embeddings, item_embeddings, user_id, top_k=20)
+    business_info = get_business_info(recommended_items.tolist())
+    return JsonResponse(business_info)
