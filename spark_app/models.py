@@ -288,3 +288,18 @@ class BusinessRanking(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.city}) - Rank: {self.rank}"
+
+
+class relationNode(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    value = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} ({self.value})"
+class relationLink(models.Model):
+    source = models.ForeignKey(relationNode, related_name="source_node", on_delete=models.CASCADE)
+    target = models.ForeignKey(relationNode, related_name="target_node", on_delete=models.CASCADE)
+    weight = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.source.name} -> {self.target.name} (Weight: {self.weight})"

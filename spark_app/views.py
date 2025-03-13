@@ -28,7 +28,8 @@ from .models import (
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
-    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking, relationNode, relationLink
+
 )
 from .utils.analyse import update_review, update_checkin
 from .utils.user_mission import get_deep
@@ -802,3 +803,47 @@ def get_business_ranking(request):
     except Exception as e:
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def save_relation_graph_to_db(request):
+    try:
+        data = relationGraph()
+        """
+        将关系图数据保存到数据库
+        """
+        # 清空旧数据
+        relationNode.objects.all().delete()
+        relationLink.objects.all().delete()
+
+        # 保存节点
+        nodes = {}
+        for node_data in data["nodes"]:
+            node, created = relationNode.objects.get_or_create(name=node_data["name"], defaults={"value": node_data["value"]})
+            nodes[node_data["name"]] = node
+
+        # 保存边
+        for link_data in data["links"]:
+            source_node = nodes[link_data["source"]]
+            target_node = nodes[link_data["target"]]
+            relationLink.objects.create(source=source_node, target=target_node, weight=link_data["value"])
+
+        # 返回成功响应
+        return JsonResponse({"status": "success", "message": "Data saved successfully"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def get_relation_graph(request):
+    """
+    视图函数，返回关系图数据
+    """
+    if request.method == "GET":
+        # 检查数据库中是否有数据
+        # 如果有数据，直接从数据库读取
+        nodes = [{"name": node.name, "value": node.value} for node in relationNode.objects.all()]
+        links = [{"source": link.source.name, "target": link.target.name, "value": link.weight} for link in relationLink.objects.all()]
+        data = {"nodes": nodes, "links": links}
+
+        return JsonResponse(data, safe=False)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
