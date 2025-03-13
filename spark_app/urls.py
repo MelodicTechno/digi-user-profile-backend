@@ -13,11 +13,16 @@ from .views import (
     get_business_statistics, get_user_statistics,
     update_user_statistics, update_business_statistics, update_score_statistics, get_score_statistics,
     update_review_statistics, get_review_statistics, update_checkin_statistics, get_checkin_statistics,
+    update_wordcloud_data, get_wordcloud_data, get_business_information, get_rating_recommend,
+    get_business_information, update_yearly_statistics,
+    get_yearly_statistics,
     update_wordcloud_data, get_wordcloud_data, update_restaurantCount_statistics, get_restaurantCount_statistics,
     update_wordcloud_data, get_wordcloud_data, get_business_information, get_wordcloud_data, update_yearly_statistics,
     get_yearly_statistics,
     update_wordcloud_data, get_wordcloud_data, update_restaurantCount_statistics, get_restaurantCount_statistics,
-    get_friend_recommend, update_friend_recommendations
+    get_friend_recommend, update_friend_recommendations,
+    update_business_ranking, get_business_ranking, get_relation_graph, save_relation_graph_to_db,
+    update_business_ranking, get_business_ranking, update_review_data, get_review_data, receive_data
 
 )
 
@@ -46,9 +51,20 @@ urlpatterns = [
     path('update_wordcloud_data/', update_wordcloud_data, name='get_word_cloud_data'),
     path('get_wordcloud_data/', get_wordcloud_data, name='get_word_cloud_data'),
     path('get_business_information/<str:business_id>/',get_business_information, name='get_business_information' ),
+    path('get_rating_recommend/<str:user_id>/', get_rating_recommend, name='get_rating_recommend'),
     path('update_yearly_statistics/', update_yearly_statistics, name='update_yearly_statistics'),
     path('get_yearly_statistics/', get_yearly_statistics, name='get_yearly_statistics'),
     path('friend_recommend/', update_friend_recommendations, name='recommend_friend'),
     path('recommend_friend/get_friend/', get_friend_recommend, name='get_friend_recommendations'),
     path('chat_AI/', chat_handler, name='ai_chat'),
+    path('update_business_ranking/', update_business_ranking, name='update_business_ranking'),
+    path('get_business_ranking/', get_business_ranking, name='get_business_ranking'),
+    path('update_business_ranking/', update_business_ranking, name='update_business_ranking'),
+    path('get_business_ranking/', get_business_ranking, name='get_business_ranking'),
+    path('relation_graph/', get_relation_graph, name='relation_graph'),
+    path('save_relation_graph_to_db/', save_relation_graph_to_db, name='save_relation_graph_to_db'),
+    path('update_review_data/', update_review_data, name='update_review_data'),
+    path('get_review_data/', get_review_data, name='get_review_data'),
+    path('api/receive_data/', receive_data, name='receive_data'),
+
 ]

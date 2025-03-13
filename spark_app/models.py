@@ -276,6 +276,7 @@ class TopCategory(models.Model):
     def __str__(self):
         return f"{self.category}: {self.count}"
 
+
 class FriendsRecommended(models.Model):
     recommended_user_id = models.CharField(max_length=255)
     recommend_user_name = models.CharField(max_length=255, blank=True, null=True)
@@ -283,3 +284,41 @@ class FriendsRecommended(models.Model):
     common_friend_ratio = models.FloatField()
     def __str__(self):
         return f'recommended_user_id: {self.recommended_user_id}, recommend_user_name: {self.recommend_user_name}, recommend_fans_number: {self.recommend_fans_number},common_friend_ratio: {self.common_friend_ratio}'
+
+# 综合查询
+class BusinessRanking(models.Model):
+    business_id = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    city = models.CharField(max_length=255)
+    stars = models.FloatField()
+    total_checkins = models.IntegerField()
+    review_count = models.IntegerField()
+    rank = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} ({self.city}) - Rank: {self.rank}"
+
+
+class relationNode(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    value = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} ({self.value})"
+class relationLink(models.Model):
+    source = models.ForeignKey(relationNode, related_name="source_node", on_delete=models.CASCADE)
+    target = models.ForeignKey(relationNode, related_name="target_node", on_delete=models.CASCADE)
+    weight = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.source.name} -> {self.target.name} (Weight: {self.weight})"
+
+class ReviewRank(models.Model):
+    review_type = models.CharField(max_length=50)  # 评论类型
+    word = models.CharField(max_length=100, blank=True, null=True)  # 评论中的单词
+    count = models.IntegerField()  # 数量
+
+    def __str__(self):
+        return f"{self.review_type}: {self.word} ({self.count})"
+
+
