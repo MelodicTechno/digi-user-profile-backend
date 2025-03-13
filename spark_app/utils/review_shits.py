@@ -1,5 +1,5 @@
 from pyspark.ml.feature import StopWordsRemover
-from pyspark.sql.functions import regexp_replace, lower, col, split, expr, explode, size
+from pyspark.sql.functions import regexp_replace, lower, col, split, expr, explode, size, to_date, year
 
 from spark_app.utils.setup import create_spark
 
@@ -10,6 +10,22 @@ def poop():
     """
     统计有用（helpful）、有趣（funny）及酷（cool）的评论及数量
     """
+
+    # 读取 Hive 表
+    hive_df = spark.sql("SELECT * FROM default.review")
+
+    # 显示前 5 行数据
+    # hive_df.show(5, truncate=False)
+    # 数据清洗 新增一列年份数据
+
+    # 将字符串格式的日期转为date格式
+    updated_review = hive_df.withColumn("date", to_date(col("date"), "yyyy-MM-dd")) \
+        .withColumn("year", year(col("date")))
+
+    # updated_df.show(5, truncate=False)
+    # 将 updated_review 注册为临时视图
+    updated_review.createOrReplaceTempView("updated_review")
+
     summary = spark.sql("""
         SELECT 'useful' AS type, COUNT(*) AS count FROM updated_review WHERE useful > 0
         UNION ALL
