@@ -1,7 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
+from .utils import pie
+from .utils.relationGraph import relationGraph
 from .utils.business_recommend import *
+from .utils.general import get_general
 from .utils.location_recommender import *
 from .utils.get_business import *
 from .utils.rating_recommender import *
@@ -26,9 +29,13 @@ from .models import (
     UserEveryYear,
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
-    GraphNode, GraphEdge, WordFrequency,
+    GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking, relationNode, relationLink,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, BusinessRanking, ReviewRank,
 )
 from .utils.analyse import update_review, update_checkin
+from .utils.review_shits import poop
+from .utils.user_mission import get_deep
 from .utils.word_cloud import process_comments
 
 
@@ -92,7 +99,6 @@ def update_statistics(request):
 # 更新商户统计数据
 @require_http_methods(['GET'])
 def update_business_statistics(request):
-
     # 更新数据
     try:
         statistics = analyse.update_business()
@@ -170,6 +176,69 @@ def update_business_statistics(request):
         )
 
     return JsonResponse({"message": "Update business data succeeded"})
+
+@require_http_methods(['GET'])
+def update_restaurantCount_statistics(request):
+    try:
+        statistics = pie.update_business_pie()
+        print("Statistics:", statistics)
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update user data: {str(e)}"}, status=500)
+
+    # RestaurantCount.objects.all().delete()
+    # RestaurantsReviewCount.objects.all().delete()
+    # RestaurantReviewStars.objects.all().delete()
+    TopCategory.objects.all().delete()
+
+    # 获取 category_count 字典
+    # category_count = statistics['category_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in category_count.items():
+    #     RestaurantCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    # restaurant_category_count = statistics['Restaurants_review_count']
+    # # 遍历 category_count 的键值对
+    # for restaurant_type, count in restaurant_category_count.items():
+    #     RestaurantsReviewCount.objects.create(
+    #         type=restaurant_type,
+    #         count=count
+    #     )
+
+    # print(statistics)
+    #
+    # for restaurant_type, data in statistics.items():
+    #     for item in data:
+    #         RestaurantReviewStars.objects.create(
+    #             restaurant_type=restaurant_type.split("_")[0].capitalize(),  # 转换为“Chinese”、“American”等
+    #             rating_group=item["rating_group"],
+    #             count=item["count"]
+    #         )
+
+    category_counts = statistics['category_counts']
+    # 遍历 category_count 的键值对
+    for item in category_counts:
+        TopCategory.objects.create(
+            category=item["category"].strip(),  # 去掉多余的空格
+            count=item["count"]
+        )
+
+
+    return JsonResponse({"message": "Update restaurant data succeeded"})
+
+@require_http_methods(['GET'])
+def get_restaurantCount_statistics(request):
+    statistics = {
+        "restaurant_pie_chart": list(RestaurantCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart2": list(RestaurantsReviewCount.objects.all().values('type', 'count')),
+        "restaurant_pie_chart3": list(RestaurantReviewStars.objects.all().values('restaurant_type', 'rating_group', 'count')),
+        "top_category": list(TopCategory.objects.all().values('category', 'count'))
+    }
+
+    return JsonResponse(statistics)
+
 
 # 更新用户统计数据
 @require_http_methods(['GET'])
@@ -593,6 +662,7 @@ def update_wordcloud_data(request):
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
 
+
 @require_http_methods(['GET'])
 def get_business_information(request, business_id):
     return JsonResponse(get_business(business_id))
@@ -607,3 +677,278 @@ def get_rating_recommend(request, user_id):
     recommended_items = recommend_items(user_embeddings, item_embeddings, user_id, top_k=20)
     business_info = get_business_info(recommended_items.tolist())
     return JsonResponse(business_info)
+
+def update_yearly_statistics(request):
+    """
+    调用 get_deep 函数处理每年的统计数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_deep 函数处理数据
+        yearly_statistics = get_deep()
+
+        # 清空现有数据
+        YearlyStatistics.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for stat in yearly_statistics:
+            # 确保 year 是有效的整数
+            year = stat.get('year')
+            if year:
+                if isinstance(year, str) and year.isdigit():
+                    year = int(year)
+                elif isinstance(year, int):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid year entry: {stat}")
+                    continue
+
+                YearlyStatistics.objects.update_or_create(
+                    year=year,
+                    defaults={
+                        'new_users': stat['new_users'],
+                        'review_count': stat['review_count'],
+                        'elite_users': stat['elite_users'],
+                        'tip_count': stat['tip_count'],
+                        'checkin_count': stat['checkin_count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing year: {stat}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+#  获取巨他妈难的那个数据
+@require_http_methods(['GET'])
+def get_yearly_statistics(request):
+    """
+    查询每年的统计数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询每年的统计数据
+        yearly_statistics = list(YearlyStatistics.objects.all().values('year', 'new_users', 'review_count', 'elite_users', 'tip_count', 'checkin_count'))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "yearly_statistics": yearly_statistics,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 好友推荐后端接口
+@require_http_methods(['GET'])
+def recommend_friend(request):
+    statistics = {
+        "most_common_shop": list(MostCommonShop.objects.all().values('name', 'shop_count')),
+    }
+
+    return JsonResponse(statistics)
+
+
+# 更新综合大分析数据
+@require_http_methods(['GET'])
+def update_business_ranking(request):
+    """
+    调用 get_general 函数处理业务排名数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 get_general 函数处理数据
+        business_ranking_data = get_general()
+
+        # 清空现有数据
+        BusinessRanking.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for data in business_ranking_data:
+            # 确保 business_id 是有效的字符串
+            business_id = data.get('business_id')
+            if business_id:
+                if isinstance(business_id, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid business_id entry: {data}")
+                    continue
+
+                BusinessRanking.objects.update_or_create(
+                    business_id=business_id,
+                    defaults={
+                        'name': data['name'],
+                        'city': data['city'],
+                        'stars': data['stars'],
+                        'total_checkins': data['total_checkins'],
+                        'review_count': data['review_count'],
+                        'rank': data['rank']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing business_id: {data}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 查询综合数据
+@require_http_methods(['GET'])
+def get_business_ranking(request):
+    """
+    查询业务排名数据并返回 JSON 格式的结果
+    """
+    try:
+        # 查询业务排名数据
+        business_ranking = list(BusinessRanking.objects.all().values(
+            'business_id', 'name', 'city', 'stars', 'total_checkins', 'review_count', 'rank'
+        ))
+
+        # 准备返回的 JSON 数据
+        data = {
+            "business_ranking": business_ranking,
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def save_relation_graph_to_db(request):
+    try:
+        data = relationGraph()
+        """
+        将关系图数据保存到数据库
+        """
+        # 清空旧数据
+        relationNode.objects.all().delete()
+        relationLink.objects.all().delete()
+
+        # 保存节点
+        nodes = {}
+        for node_data in data["nodes"]:
+            node, created = relationNode.objects.get_or_create(name=node_data["name"], defaults={"value": node_data["value"]})
+            nodes[node_data["name"]] = node
+
+        # 保存边
+        for link_data in data["links"]:
+            source_node = nodes[link_data["source"]]
+            target_node = nodes[link_data["target"]]
+            relationLink.objects.create(source=source_node, target=target_node, weight=link_data["value"])
+
+        # 返回成功响应
+        return JsonResponse({"status": "success", "message": "Data saved successfully"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@require_http_methods(['GET'])
+def get_relation_graph(request):
+    """
+    视图函数，返回关系图数据
+    """
+    if request.method == "GET":
+        # 检查数据库中是否有数据
+        # 如果有数据，直接从数据库读取
+        nodes = [{"name": node.name, "value": node.value} for node in relationNode.objects.all()]
+        links = [{"source": link.source.name, "target": link.target.name, "value": link.weight} for link in relationLink.objects.all()]
+        data = {"nodes": nodes, "links": links}
+
+        return JsonResponse(data, safe=False)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+# 非常不开心
+@require_http_methods(['GET'])
+def update_review_data(request):
+    """
+    调用 poop 函数处理评论数据，并将结果存储到数据库中
+    """
+    try:
+        # 调用 poop 函数处理数据
+        review_data = poop()
+
+        # 清空现有数据
+        ReviewRank.objects.all().delete()
+
+        # 将数据保存到数据库中
+        for data in review_data['summary']:
+            # 确保 type 是有效的字符串
+            review_type = data.get('type')
+            if review_type:
+                if isinstance(review_type, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid review_type entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    review_type=review_type,
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing review_type: {data}")
+
+        for data in review_data['positive_words']:
+            # 确保 word 是有效的字符串
+            word = data.get('word')
+            if word:
+                if isinstance(word, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid word entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    word=word,
+                    review_type='positive',
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing word: {data}")
+
+        for data in review_data['negative_words']:
+            # 确保 word 是有效的字符串
+            word = data.get('word')
+            if word:
+                if isinstance(word, str):
+                    pass
+                else:
+                    logging.debug(f"Skipping invalid word entry: {data}")
+                    continue
+
+                ReviewRank.objects.update_or_create(
+                    word=word,
+                    review_type='negative',
+                    defaults={
+                        'count': data['count']
+                    }
+                )
+            else:
+                logging.debug(f"Skipping entry with missing word: {data}")
+
+        # 返回成功响应
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        # 如果发生错误，返回错误信息
+        return JsonResponse({"error": str(e)}, status=500)
+
+# 想杀死所有人
+@require_http_methods(['GET'])
+def get_review_data(request):
+    # 返回值
+    statistics = {
+        "summary": list(ReviewRank.objects.filter(word__isnull=True).values('review_type', 'count')),
+        "positive_words": list(ReviewRank.objects.filter(review_type='positive').values('word', 'count'))[:10],
+        "negative_words": list(ReviewRank.objects.filter(review_type='negative').values('word', 'count'))[:10],
+    }
+
+    # 返回JsonResponse
+    return JsonResponse(statistics)
+

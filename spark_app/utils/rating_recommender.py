@@ -81,7 +81,7 @@ if __name__ == "__main__":
     user_embeddings, item_embeddings = load_embeddings(user_file, item_file)
 
     # 目标用户ID
-    target_user_id = 'qVc8ODYU5SZjKXVBgXdI7w'
+    target_user_id = ''
 
     # 获取推荐商户ID
     recommended_items = recommend_items(user_embeddings, item_embeddings, target_user_id, top_k=20)
