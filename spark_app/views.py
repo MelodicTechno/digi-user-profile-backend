@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils import pie
+from .utils.relationGraph import relationGraph
 from .utils.business_recommend import *
 from .utils.general import get_general
 from .utils.location_recommender import *
