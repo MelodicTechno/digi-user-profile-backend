@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from .utils import analyse
 from .utils import pie
 from .utils.business_recommend import *
+from .utils.friends_recommend_3_generation import recommend_common_friends_bfs
 from .utils.location_recommender import *
 from .utils.get_business import *
 from django.core.cache import cache
@@ -27,7 +28,7 @@ from .models import (
     ReviewCountYear,
     TotalAndSilent, ReviewInWeek, StarsDistribution, Top5Businesses, YearReviewCount, UserReviewCount, TopWord,
     GraphNode, GraphEdge, WordFrequency, RestaurantCount, RestaurantsReviewCount, RestaurantReviewStars,
-    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory,
+    GraphNode, GraphEdge, WordFrequency, YearlyStatistics, TopCategory, FriendsRecommended,
 )
 from .utils.analyse import update_review, update_checkin
 from .utils.user_mission import get_deep
@@ -724,13 +725,51 @@ def get_yearly_statistics(request):
         # 如果发生错误，返回错误信息
         return JsonResponse({"error": str(e)}, status=500)
 
-# 好友推荐后端接口
-@require_http_methods(['GET'])
-def recommend_friend(request):
-    statistics = {
-        "most_common_shop": list(MostCommonShop.objects.all().values('name', 'shop_count')),
-    }
 
-    return JsonResponse(statistics)
+@require_http_methods(['GET'])
+def get_friend_recommend(request):
+    try:
+        # 从数据库中获取好友推荐数据
+        recommendations = list(FriendsRecommended.objects.values(
+            'recommended_user_id', 'recommend_user_name', 'recommend_fans_number', 'common_friend_ratio'
+        ))
+
+        # 如果没有推荐数据，返回相应的提示信息
+        if not recommendations:
+            return JsonResponse({"message": "No friend recommendations available"}, status=404)
+
+        # 返回推荐数据
+        return JsonResponse({"message": "Friend recommendations retrieved successfully", "data": recommendations})
+
+    except Exception as e:
+        # 捕获异常并返回错误信息
+        return JsonResponse({"message": f"Failed to retrieve friend recommendations: {str(e)}"}, status=500)
+
+
+
+
+
+@require_http_methods(['GET'])
+def update_friend_recommendations(request):
+    try:
+        # 假设这里有一个函数 get_friend_recommendations 来获取推荐数据
+        # 你需要根据实际情况实现这个函数，它返回一个类似下面结构的字典
+        recommendations = recommend_common_friends_bfs('qVc8ODYU5SZjKXVBgXdI7w')
+        # 清空现有数据
+        FriendsRecommended.objects.all().delete()
+
+        # 保存数据
+        for rec in recommendations:
+            FriendsRecommended.objects.create(
+                recommended_user_id=rec['recommended_user_id'],
+                recommend_user_name=rec.get('recommend_user_name', ''),
+                recommend_fans_number=rec.get('recommend_fans_number', 0),
+                common_friend_ratio=rec['common_friend_ratio']
+            )
+
+        return JsonResponse({"message": "Update friend recommendations succeeded"})
+    except Exception as e:
+        return JsonResponse({"message": f"Failed to update friend recommendations: {str(e)}"}, status=500)
+
 
 

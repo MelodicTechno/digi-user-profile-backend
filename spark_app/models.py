@@ -275,3 +275,11 @@ class TopCategory(models.Model):
 
     def __str__(self):
         return f"{self.category}: {self.count}"
+
+class FriendsRecommended(models.Model):
+    recommended_user_id = models.CharField(max_length=255)
+    recommend_user_name = models.CharField(max_length=255, blank=True, null=True)
+    recommend_fans_number = models.IntegerField(blank=True, null=True)
+    common_friend_ratio = models.FloatField()
+    def __str__(self):
+        return f'recommended_user_id: {self.recommended_user_id}, recommend_user_name: {self.recommend_user_name}, recommend_fans_number: {self.recommend_fans_number},common_friend_ratio: {self.common_friend_ratio}'
