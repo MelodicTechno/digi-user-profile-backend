@@ -122,6 +122,7 @@ def location_recommend(user_latitude, user_longitude):
     # 转换为 JSON 格式并收集结果
     dict_results = {
         row["business_id"]: {
+            "business_id": row["business_id"],
             "name": row["name"],
             "stars": row["stars"],
             "distance": row["distance"],
